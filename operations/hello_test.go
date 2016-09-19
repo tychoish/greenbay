@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"github.com/urfave/cli"
 )
 
 // CommandsSuite provide a group of tests of the entry points and
@@ -33,6 +34,9 @@ func (s *CommandsSuite) TestHelloCommandObjectAttributes() {
 	s.Contains(cmd.Aliases, "hi")
 	s.Contains(cmd.Aliases, "hello-world")
 	s.Len(cmd.Flags, 0)
+	action, ok := cmd.Action.(func(c *cli.Context) error)
+	s.True(ok)
+	s.Nil(action(nil))
 }
 
 func (s *CommandsSuite) TestHelloWorldFunctionReturnsHelloWorldString() {

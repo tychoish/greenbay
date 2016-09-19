@@ -43,7 +43,8 @@ func buildApp() *cli.App {
 	}
 
 	app.Before = func(c *cli.Context) error {
-		return errors.Wrap(loggingSetup(app.Name, c.String("level")))
+		return errors.Wrap(loggingSetup(app.Name, c.String("level")),
+			"problem setting log level")
 	}
 
 	return app
