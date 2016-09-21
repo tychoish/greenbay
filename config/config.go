@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/mongodb/amboy"
@@ -79,27 +80,44 @@ func ReadConfig(fn string) (*GreenbayTestConfig, error) {
 
 	data, err := ioutil.ReadFile(fn)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem reading greenbay config file")
+		return nil, errors.Wrapf(err, "problem reading greenbay config file: %s", fn)
 	}
 
-	// the yaml package does not include a way to do the kind of
-	// delayed parsing that encoding/json permits, so we cycle
-	// into a map and then through the JSON parser itself.
-	intermediateOut := make(map[string]interface{})
-	err = yaml.Unmarshal(data, intermediateOut)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem parsing yaml config")
+	if strings.HasSuffix(fn, ".yaml") || strings.HasSuffix(fn, ".yml") {
+		// the yaml package does not include a way to do the kind of
+		// delayed parsing that encoding/json permits, so we cycle
+		// into a map and then through the JSON parser itself.
+		intermediateOut := make(map[string]interface{})
+		err = yaml.Unmarshal(data, intermediateOut)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem parsing yaml config")
+		}
+
+		data, err = json.Marshal(intermediateOut)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem converting yaml to intermediate json")
+		}
+	} else if !strings.HasSuffix(fn, ".json") {
+		return nil, errors.Errorf("greenbay does not support configuration format for file %s", fn)
 	}
 
-	jsonOut, err := json.Marshal(intermediateOut)
+	// now we have a json formated byte slice in data and we can
+	// unmarshal it as we want.
+	err = json.Unmarshal(data, c)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem converting yaml to intermediate json")
+		return nil, errors.Wrapf(err, "problem parsing config: %s", fn)
 	}
 
-	err = json.Unmarshal(jsonOut, c)
+	err = c.parseTests()
 	if err != nil {
-		return nil, errors.Wrap(err, "problem converting yaml to document")
+		return nil, errors.Wrapf(err, "problem parsing tests from file: %s", fn)
 	}
+	return c, nil
+}
+
+func (c *GreenbayTestConfig) parseTests() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	catcher := grip.NewCatcher()
 	for _, msg := range c.RawTests {
@@ -118,7 +136,7 @@ func ReadConfig(fn string) (*GreenbayTestConfig, error) {
 		}
 
 		if _, ok := c.tests[msg.Name]; ok {
-			m := fmt.Sprintf("two tests named %s in config file %s", msg.Name, fn)
+			m := fmt.Sprintf("two tests named %s", msg.Name)
 			grip.Alert(m)
 			catcher.Add(errors.New(m))
 			continue
@@ -127,11 +145,7 @@ func ReadConfig(fn string) (*GreenbayTestConfig, error) {
 		c.tests[msg.Name] = testJob
 	}
 
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
-
-	return c, nil
+	return catcher.Resolve()
 }
 
 // GetTests takes the name of a suite and then produces a sequence of
