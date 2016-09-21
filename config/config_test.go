@@ -1,6 +1,7 @@
 package config
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -8,7 +9,7 @@ import (
 )
 
 type ConfigSuite struct {
-	conf    GreenbayTestConfig
+	conf    *GreenbayTestConfig
 	require *require.Assertions
 	suite.Suite
 }
@@ -22,10 +23,16 @@ func (s *ConfigSuite) SetupSuite() {
 }
 
 func (s *ConfigSuite) SetupTest() {
-
+	s.conf = newTestConfig()
 }
 
-func (s *ConfigSuite) Test() {
-	s.Test(true)
-	s.require.False(false)
+func (s *ConfigSuite) TestInitializedConfObjectHasCorrectInitialValues() {
+	s.NotNil(s.conf.tests)
+	s.NotNil(s.conf.suites)
+
+	s.Len(s.conf.tests, 0)
+	s.Len(s.conf.suites, 0)
+	s.Len(s.conf.RawTests, 0)
+
+	s.Equal(runtime.NumCPU(), s.conf.Options.Jobs)
 }

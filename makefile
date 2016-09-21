@@ -1,7 +1,7 @@
 # start project configuration
 name := greenbay
 buildDir := build
-packages := operations main
+packages := config check operations main
 orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -160,7 +160,7 @@ testArgs := -v --timeout=20m
 $(buildDir)/coverage.%.html:$(buildDir)/coverage.%.out
 	$(vendorGopath) go tool cover -html=$< -o $@
 $(buildDir)/coverage.%.out:$(testRunDeps)
-	$(vendorGopath) go test -v -covermode=count -coverprofile=$@ $(projectPath)/$*
+	$(vendorGopath) go test -covermode=count -coverprofile=$@ $(projectPath)/$*
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/coverage.$(name).out:$(testRunDeps)
 	$(vendorGopath) go test -covermode=count -coverprofile=$@ $(projectPath)
