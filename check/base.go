@@ -24,6 +24,7 @@ type Base struct {
 	TestSuites    []string      `bson:"suites" json:"suites" yaml:"suites"`
 	dep           dependency.Manager
 	mutex         sync.RWMutex
+	amboy.Priority
 }
 
 //////////////////////////////////////////////////////////////////////
