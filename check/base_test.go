@@ -168,3 +168,24 @@ func (s *BaseCheckSuite) TestSetSuitesOverriedsExistingSuites() {
 		s.Equal(suites, s.base.Suites())
 	}
 }
+
+func (s *BaseCheckSuite) TestRoutTripAbilityThroughImportAndExport() {
+	s.base.JobType = amboy.JobType{
+		Format:  amboy.JSON,
+		Version: 42,
+	}
+
+	s.Equal(42, s.base.JobType.Version)
+	out, err := s.base.Export()
+
+	s.NoError(err)
+	s.NotNil(out)
+
+	s.base.JobType.Version = 21
+	s.Equal(21, s.base.JobType.Version)
+
+	err = s.base.Import(out)
+	s.NoError(err)
+	s.Equal(42, s.base.JobType.Version)
+
+}

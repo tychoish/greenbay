@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/greenbay"
 	"github.com/pkg/errors"
 )
 
@@ -14,8 +15,8 @@ type rawTest struct {
 	RawArgs   json.RawMessage `bson:"args" json:"args" yaml:"args"`
 }
 
-func (t *rawTest) getJob() (greenbay.Checker, error) {
-	check, err := t.getCheck()
+func (t *rawTest) resolveCheck() (greenbay.Checker, error) {
+	check, err := t.getChecker()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem determining job type")
 	}
@@ -31,19 +32,19 @@ func (t *rawTest) getJob() (greenbay.Checker, error) {
 	return check, nil
 }
 
-func (t *rawTest) getCheck() (greenbay.Checker, error) {
+func (t *rawTest) getChecker() (greenbay.Checker, error) {
 	factory, err := registry.GetJobFactory(t.Operation)
 	if err != nil {
 		return nil, errors.Wrapf(err, "no test job named %s defined,",
 			t.Operation)
 	}
 
-	testJob := factory()
+	j := factory()
 
-	check, ok := testJob.(greenbay.Checker)
+	c, ok := j.(greenbay.Checker)
 	if !ok {
 		return nil, errors.Errorf("job %s does not implement Checker interface", t.Name)
 	}
 
-	return check, nil
+	return c, nil
 }

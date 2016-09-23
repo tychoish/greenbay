@@ -8,6 +8,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
+	"github.com/mongodb/amboy/priority"
 	"github.com/mongodb/greenbay"
 	"github.com/pkg/errors"
 )
@@ -24,7 +25,9 @@ type Base struct {
 	TestSuites    []string      `bson:"suites" json:"suites" yaml:"suites"`
 	dep           dependency.Manager
 	mutex         sync.RWMutex
-	amboy.Priority
+
+	// adds common priority tracking.
+	priority.Value
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -50,15 +53,21 @@ func (b *Base) Output() greenbay.CheckOutput {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
 
-	return greenbay.CheckOutput{
+	out := greenbay.CheckOutput{
 		Name:      b.ID(),
 		Check:     b.Type().Name,
 		Suites:    b.Suites(),
 		Completed: b.IsComplete,
 		Passed:    b.WasSuccessful,
-		Error:     b.Error().Error(),
 		Message:   b.Message,
 	}
+
+	if err := b.Error(); err != nil {
+		out.Error = err.Error()
+	}
+
+	return out
+
 }
 
 func (b *Base) setState(result bool) {
@@ -198,4 +207,17 @@ func (b *Base) Error() error {
 	}
 
 	return errors.New(strings.Join(outputs, "\n"))
+}
+
+// Export serializes the job object according to the Format specified
+// in the the JobType argument.
+func (j *Base) Export() ([]byte, error) {
+	return amboy.ConvertTo(j.Type().Format, j)
+}
+
+// Import takes a byte array, and attempts to marshal that data into
+// the current job object according to the format specified in the Job
+// type definition for this object.
+func (j *Base) Import(data []byte) error {
+	return amboy.ConvertFrom(j.Type().Format, data, j)
 }

@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"runtime"
 	"sync"
@@ -35,6 +34,37 @@ func newTestConfig() *GreenbayTestConfig {
 	return conf
 }
 
+// GetTests takes the name of a suite and then produces a sequence of
+// jobs that are part of that suite.
+func (c *GreenbayTestConfig) GetTests(suite string) (<-chan amboy.Job, error) {
+	c.mutex.RLock()
+	tests, ok := c.suites[suite]
+	c.mutex.RUnlock()
+
+	if !ok {
+		return nil, errors.Errorf("no suite named '%s' exists,", suite)
+	}
+
+	output := make(chan amboy.Job)
+	go func() {
+		c.mutex.RLock()
+		defer c.mutex.RUnlock()
+
+		for _, test := range tests {
+			if j, ok := c.tests[test]; ok {
+				output <- j
+				continue
+			}
+
+			grip.Warningf("test named %s doesn't exist, but should", test)
+		}
+
+		close(output)
+	}()
+
+	return output, nil
+}
+
 // ReadConfig takes a path name to a configuration file (yaml
 // formatted,) and returns a configuration format.
 func ReadConfig(fn string) (*GreenbayTestConfig, error) {
@@ -51,7 +81,7 @@ func ReadConfig(fn string) (*GreenbayTestConfig, error) {
 	// Parse data:
 	data, err = getJSONFormatedConfig(format, data)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem parsing config from file %s", fn)
+		return nil, errors.Wrapf(err, "problem parsing config from file %s", fn)
 	}
 
 	c := newTestConfig()
@@ -72,69 +102,4 @@ func ReadConfig(fn string) (*GreenbayTestConfig, error) {
 		return nil, errors.Wrapf(err, "problem parsing tests from file: %s", fn)
 	}
 	return c, nil
-}
-
-func (c *GreenbayTestConfig) parseTests() error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	catcher := grip.NewCatcher()
-	for _, msg := range c.RawTests {
-		for _, suite := range msg.Suites {
-			if _, ok := c.suites[suite]; !ok {
-				c.suites[suite] = []string{}
-			}
-
-			c.suites[suite] = append(c.suites[suite], msg.Name)
-		}
-
-		testJob, err := msg.getJob()
-		if err != nil {
-			catcher.Add(err)
-			continue
-		}
-
-		if _, ok := c.tests[msg.Name]; ok {
-			m := fmt.Sprintf("two tests named %s", msg.Name)
-			grip.Alert(m)
-			catcher.Add(errors.New(m))
-			continue
-		}
-
-		c.tests[msg.Name] = testJob
-	}
-
-	return catcher.Resolve()
-}
-
-// GetTests takes the name of a suite and then produces a sequence of
-// jobs that are part of that suite.
-func (c *GreenbayTestConfig) GetTests(suite string) (<-chan amboy.Job, error) {
-	c.mutex.RLock()
-	tests, ok := c.suites[suite]
-	c.mutex.RUnlock()
-
-	if !ok {
-		return nil, errors.Errorf("no suite named '%s' exists,", suite)
-	}
-
-	output := make(chan amboy.Job)
-	go func() {
-		c.mutex.RLock()
-		defer c.mutex.RUnlock()
-
-		for _, test := range tests {
-			j, ok := c.tests[test]
-			if !ok {
-				grip.Warningf("test named %s doesn't exist, but should", test)
-				continue
-			}
-
-			output <- j
-		}
-
-		close(output)
-	}()
-
-	return output, nil
 }
