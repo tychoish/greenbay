@@ -133,3 +133,11 @@ func (s *ProducerSuite) TestWithQueueAndInvalidJobs() {
 	q.Wait()
 	s.Error(s.results.Populate(q))
 }
+
+func (s *ProducerSuite) TestToFileMethodShouldFailOnNonWriteableFiles() {
+	s.NoError(s.results.Populate(s.queue))
+
+	err := s.results.ToFile(filepath.Join(s.tmpDir, "foo", "three"))
+	s.Error(err)
+	grip.Error(err)
+}
