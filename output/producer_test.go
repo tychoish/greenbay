@@ -2,6 +2,7 @@ package output
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -65,6 +66,14 @@ func (s *ProducerSuite) SetupSuite() {
 	for i := 0; i < 10; i++ {
 		check := &mockCheck{}
 		check.SetID(fmt.Sprintf("mock-check-%d", i))
+		if i%3 == 0 {
+			check.Base.Message = fmt.Sprintf("count=%d", i)
+		}
+
+		if i%2 == 0 {
+			check.Base.Errors = []error{errors.New("even!")}
+		}
+
 		s.NoError(s.queue.Put(check))
 	}
 	s.queue.Wait()
@@ -137,7 +146,11 @@ func (s *ProducerSuite) TestWithQueueAndInvalidJobs() {
 func (s *ProducerSuite) TestToFileMethodShouldFailOnNonWriteableFiles() {
 	s.NoError(s.results.Populate(s.queue))
 
-	err := s.results.ToFile(filepath.Join(s.tmpDir, "foo", "three"))
+	fn := filepath.Join(s.tmpDir, "foo", "three")
+	_, err := os.Stat(fn)
+	s.True(os.IsNotExist(err))
+
+	err = s.results.ToFile(fn)
 	s.Error(err)
 	grip.Error(err)
 }
