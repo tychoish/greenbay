@@ -18,9 +18,9 @@ type GreenbayTestConfig struct {
 		ReportFormat   string `bson:"report_format" json:"report_format" yaml:"report_format"`
 		Jobs           int    `bson:"jobs" json:"jobs" yaml:"jobs"`
 	} `bson:"options" json:"options" yaml:"options"`
-	RawTests []rawTest `bson:"tests" json:"tests" yaml:"tests"`
-	tests    map[string]amboy.Job
-	suites   map[string][]string
+	RawTests []rawTest            `bson:"tests" json:"tests" yaml:"tests"`
+	tests    map[string]amboy.Job // maping of test names to test objects
+	suites   map[string][]string  // mapping of suite names to test names
 	mutex    sync.RWMutex
 }
 
@@ -34,35 +34,89 @@ func newTestConfig() *GreenbayTestConfig {
 	return conf
 }
 
-// GetTests takes the name of a suite and then produces a sequence of
+// JobWithError is a type used by the test generators and contains an
+// amboy.Job and an error message.
+type JobWithError struct {
+	Job amboy.Job
+	Err error
+}
+
+// TestsForSuites takes the name of a suite and then produces a sequence of
 // jobs that are part of that suite.
-func (c *GreenbayTestConfig) GetTests(suite string) (<-chan amboy.Job, error) {
-	c.mutex.RLock()
-	tests, ok := c.suites[suite]
-	c.mutex.RUnlock()
-
-	if !ok {
-		return nil, errors.Errorf("no suite named '%s' exists,", suite)
-	}
-
-	output := make(chan amboy.Job)
+func (c *GreenbayTestConfig) TestsForSuites(names ...string) <-chan JobWithError {
+	output := make(chan JobWithError)
 	go func() {
 		c.mutex.RLock()
 		defer c.mutex.RUnlock()
 
-		for _, test := range tests {
-			if j, ok := c.tests[test]; ok {
-				output <- j
+		seen := make(map[string]struct{})
+		for _, suite := range names {
+			tests, ok := c.suites[suite]
+			if !ok {
+				grip.Warningf("suite named '%s' does not exist", suite)
 				continue
 			}
 
-			grip.Warningf("test named %s doesn't exist, but should", test)
+			for _, test := range tests {
+				j, ok := c.tests[test]
+
+				var err error
+				if !ok {
+					err = errors.Errorf("test name %s is specified in suite %s"+
+						"but does not exist", test, suite)
+				}
+
+				if _, ok := seen[test]; ok {
+					// this means a test is specified in more than one suite,
+					// and we only want to dispatch it once.
+					continue
+				}
+
+				seen[test] = struct{}{}
+
+				if err != nil {
+					output <- JobWithError{Job: nil, Err: err}
+					continue
+				}
+
+				output <- JobWithError{Job: j, Err: nil}
+			}
 		}
 
 		close(output)
 	}()
 
-	return output, nil
+	return output
+}
+
+// TestsByName is a generator takes one or more names of tests (as
+// strings) and returns a channel of result objects that contain
+// errors (if those names do not exist) and job objects.
+func (c *GreenbayTestConfig) TestsByName(names ...string) <-chan JobWithError {
+	output := make(chan JobWithError)
+	go func() {
+		c.mutex.RLock()
+		defer c.mutex.RUnlock()
+
+		for _, test := range names {
+			j, ok := c.tests[test]
+
+			if !ok {
+				output <- JobWithError{
+					Job: nil,
+					Err: errors.Errorf("no test named %s", test),
+				}
+				continue
+			}
+
+			output <- JobWithError{Job: j, Err: nil}
+
+		}
+
+		close(output)
+	}()
+
+	return output
 }
 
 // ReadConfig takes a path name to a configuration file (yaml

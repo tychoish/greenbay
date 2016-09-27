@@ -15,7 +15,7 @@ import (
 type MockCheck struct {
 	hasRun     bool
 	shouldFail bool
-	Base
+	*Base
 }
 
 func init() {
@@ -26,13 +26,7 @@ func init() {
 	name := "mock-check"
 	registry.AddJobType(name, func() amboy.Job {
 		return &MockCheck{
-			Base: Base{
-				JobType: amboy.JobType{
-					Name:    name,
-					Version: 0,
-					Format:  amboy.JSON,
-				},
-			},
+			Base: NewBase(name, 0),
 		}
 	})
 }
@@ -45,6 +39,9 @@ func init() {
 // errors with the c.addError(<error>) or messages with the
 // c.setMessage(<message>).
 func (c *MockCheck) Run() {
+	// starts/restarts the timer for the task.
+	c.startTask()
+
 	// mark the job complete tells greenbay (amboy) that work on
 	// the check is complete. This should always run, hence the
 	// defer, to prevent rerunning tests.

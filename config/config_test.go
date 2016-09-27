@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/greenbay/check"
 	"github.com/satori/go.uuid"
@@ -17,10 +18,11 @@ import (
 )
 
 type ConfigSuite struct {
-	tempDir  string
-	confFile string
-	conf     *GreenbayTestConfig
-	require  *require.Assertions
+	tempDir        string
+	confFile       string
+	numTestsInFile int
+	conf           *GreenbayTestConfig
+	require        *require.Assertions
 	suite.Suite
 }
 
@@ -36,7 +38,7 @@ func (s *ConfigSuite) SetupSuite() {
 	s.tempDir = dir
 
 	conf := newTestConfig()
-	num := 30
+	s.numTestsInFile = 30
 
 	jsonJob, err := json.Marshal(&mockShellCheck{
 		shell: job.NewShellJob("echo foo", ""),
@@ -44,7 +46,7 @@ func (s *ConfigSuite) SetupSuite() {
 	})
 	s.NoError(err)
 
-	for i := 0; i < num; i++ {
+	for i := 0; i < s.numTestsInFile; i++ {
 		conf.RawTests = append(conf.RawTests,
 			rawTest{
 				Name:      fmt.Sprintf("check-working-shell-%d", i),
@@ -146,23 +148,100 @@ func (s *ConfigSuite) TestReadConfigWithInvalidFormat() {
 	s.Nil(conf)
 }
 
-func (s *ConfigSuite) TestGetterObject() {
+func (s *ConfigSuite) TestForSuiteGetterObject() {
 	conf, err := ReadConfig(s.confFile)
 
 	s.NoError(err)
 	s.NotNil(conf)
 
-	tests, err := conf.GetTests("one")
-	s.NoError(err)
+	tests := conf.TestsForSuites("one")
 
+	c := 0
 	for t := range tests {
-		s.NotNil(t)
+		c++
+
+		s.NoError(t.Err)
+		s.NotNil(t.Job)
 	}
+
+	s.Equal(s.numTestsInFile, c)
 }
 
-func (s *ConfigSuite) TestGetterGeneratorWithInvalidSuite() {
-	tests, err := s.conf.GetTests("DOES-NOT-EXIST")
-	s.Error(err)
-	s.Nil(tests)
+func (s *ConfigSuite) TestForSuiteGetterGeneratorWithInvalidSuite() {
+	tests := s.conf.TestsForSuites("DOES-NOT-EXIST", "ALSO-DOES-NOT-EXIST")
+	s.NotNil(tests)
+	c := 0
+	for j := range tests {
+		s.Error(j.Err)
+		s.Nil(j.Job)
+		c++
+	}
+	s.Equal(0, c)
+}
+
+func (s *ConfigSuite) TestByNameGenerator() {
+	conf, err := ReadConfig(s.confFile)
+
+	s.NoError(err)
+	s.NotNil(conf)
+
+	tests := conf.TestsByName("check-working-shell-1")
+
+	c := 0
+	for t := range tests {
+		s.NoError(t.Err)
+		s.NotNil(t.Job)
+		c++
+	}
+	s.Equal(1, c)
+}
+
+func (s *ConfigSuite) TestByNameWithInvalidGenerator() {
+	tests := s.conf.TestsByName("DOES-NOT-EXIST", "ALSO-DOES-NOT-EXIST")
+	s.NotNil(tests)
+	c := 0
+	for j := range tests {
+		if j.Err != nil {
+			continue
+		}
+
+		c++
+	}
+	s.Equal(0, c)
+}
+
+func (s *ConfigSuite) TestsBySuiteDoesNotProduceDuplicates() {
+	conf, err := ReadConfig(s.confFile)
+
+	s.NoError(err)
+	s.NotNil(conf)
+
+	c := 0
+	for t := range conf.TestsForSuites("one", "two") {
+		// this could produce dupes because all the tests
+		// appear in both suites
+		s.NotNil(t)
+		c++
+	}
+
+	s.Equal(s.numTestsInFile, c)
+}
+
+func (s *ConfigSuite) TestBySuiteWithInconsistentData() {
+	conf, err := ReadConfig(s.confFile)
+
+	s.NoError(err)
+	s.NotNil(conf)
+
+	// break the internal representation to make sure the
+	// generator does the right thing.
+	conf.tests = make(map[string]amboy.Job)
+
+	tests := conf.TestsForSuites("one")
+
+	for t := range tests {
+		s.Error(t.Err)
+		s.Nil(t.Job)
+	}
 
 }

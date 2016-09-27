@@ -1,6 +1,10 @@
 package greenbay
 
-import "github.com/mongodb/amboy"
+import (
+	"time"
+
+	"github.com/mongodb/amboy"
+)
 
 // Checker is a superset of amboy.Job that includes several other
 // features unique to Greenbay checks. These methods, in addition to
@@ -40,4 +44,17 @@ type CheckOutput struct {
 	Message   string
 	Error     string
 	Suites    []string
+	Timing    TimingInfo
+}
+
+// TimingInfo tracks the start and end time for a task.
+type TimingInfo struct {
+	Start time.Time
+	End   time.Time
+}
+
+// Duration returns a time.Duration for the timing information stored
+// in the TimingInfo object.
+func (t TimingInfo) Duration() time.Duration {
+	return t.Start.Sub(t.End)
 }

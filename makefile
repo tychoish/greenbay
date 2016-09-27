@@ -1,7 +1,7 @@
 # start project configuration
 name := greenbay
 buildDir := build
-packages := config check operations main
+packages := config check output operations main
 orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration

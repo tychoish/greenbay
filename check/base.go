@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -16,18 +17,35 @@ import (
 // Base is a type that all new checks should compose, and provides an
 // implementation of most common amboy.Job and greenbay.Check methods.
 type Base struct {
-	TaskID        string        `bson:"name" json:"name" yaml:"name"`
-	IsComplete    bool          `bson:"completed" json:"completed" yaml:"completed"`
-	WasSuccessful bool          `bson:"passed" json:"passed" yaml:"passed"`
-	JobType       amboy.JobType `bson:"job_type" json:"job_type" yaml:"job_type"`
-	Errors        []error       `bson:"errors" json:"errors" yaml:"errors"`
-	Message       string        `bson:"message" json:"message" yaml:"message"`
-	TestSuites    []string      `bson:"suites" json:"suites" yaml:"suites"`
-	dep           dependency.Manager
-	mutex         sync.RWMutex
+	TaskID        string              `bson:"name" json:"name" yaml:"name"`
+	IsComplete    bool                `bson:"completed" json:"completed" yaml:"completed"`
+	WasSuccessful bool                `bson:"passed" json:"passed" yaml:"passed"`
+	JobType       amboy.JobType       `bson:"job_type" json:"job_type" yaml:"job_type"`
+	Errors        []error             `bson:"errors" json:"errors" yaml:"errors"`
+	Message       string              `bson:"message" json:"message" yaml:"message"`
+	TestSuites    []string            `bson:"suites" json:"suites" yaml:"suites"`
+	Timing        greenbay.TimingInfo `bson:"timing" json:"timing" yaml:"timing"`
+
+	dep   dependency.Manager
+	mutex sync.RWMutex
 
 	// adds common priority tracking.
 	priority.Value
+}
+
+// NewBase exists for use in the constructors of individual checks.
+func NewBase(checkName string, version int) *Base {
+	return &Base{
+		dep: dependency.NewAlways(),
+		JobType: amboy.JobType{
+			Name:    checkName,
+			Format:  amboy.JSON,
+			Version: version,
+		},
+		Timing: greenbay.TimingInfo{
+			Start: time.Now(),
+		},
+	}
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -60,6 +78,10 @@ func (b *Base) Output() greenbay.CheckOutput {
 		Completed: b.IsComplete,
 		Passed:    b.WasSuccessful,
 		Message:   b.Message,
+		Timing: greenbay.TimingInfo{
+			Start: b.Timing.Start,
+			End:   b.Timing.End,
+		},
 	}
 
 	if err := b.Error(); err != nil {
@@ -67,7 +89,6 @@ func (b *Base) Output() greenbay.CheckOutput {
 	}
 
 	return out
-
 }
 
 func (b *Base) setState(result bool) {
@@ -169,10 +190,18 @@ func (b *Base) SetDependency(d dependency.Manager) {
 	b.dep = d
 }
 
+func (b *Base) startTask() {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	b.Timing.Start = time.Now()
+}
+
 func (b *Base) markComplete() {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
+	b.Timing.End = time.Now()
 	b.IsComplete = true
 }
 
@@ -211,13 +240,13 @@ func (b *Base) Error() error {
 
 // Export serializes the job object according to the Format specified
 // in the the JobType argument.
-func (j *Base) Export() ([]byte, error) {
-	return amboy.ConvertTo(j.Type().Format, j)
+func (b *Base) Export() ([]byte, error) {
+	return amboy.ConvertTo(b.Type().Format, b)
 }
 
 // Import takes a byte array, and attempts to marshal that data into
 // the current job object according to the format specified in the Job
 // type definition for this object.
-func (j *Base) Import(data []byte) error {
-	return amboy.ConvertFrom(j.Type().Format, data, j)
+func (b *Base) Import(data []byte) error {
+	return amboy.ConvertFrom(b.Type().Format, data, b)
 }
