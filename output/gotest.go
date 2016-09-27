@@ -16,30 +16,44 @@ import (
 // GoTest defines a ResultsProducer implementation that generates
 // output in the format of "go test -v"
 type GoTest struct {
-	buf *bytes.Buffer
+	numFailed int
+	buf       *bytes.Buffer
 }
 
 // Populate generates output, based on the content (via the Results()
 // method) of an amboy.Queue instance. All jobs processed by that
 // queue must also implement the greenbay.Checker interface.
 func (r *GoTest) Populate(queue amboy.Queue) error {
-	err := produceResults(r.buf, jobsToCheck(queue.Results()))
+	numFailed, err := produceResults(r.buf, jobsToCheck(queue.Results()))
 	if err != nil {
 		return errors.Wrap(err, "problem generating gotest results")
 	}
+
+	r.numFailed = numFailed
 
 	return nil
 }
 
 // ToFile writes the "go test -v" output to a file.
 func (r *GoTest) ToFile(fn string) error {
-	return errors.Wrapf(ioutil.WriteFile(fn, r.buf.Bytes(), 0644),
-		"problem writing output to %s", fn)
+	if err := ioutil.WriteFile(fn, r.buf.Bytes(), 0644); err != nil {
+		return errors.Wrapf(err, "problem writing output to %s", fn)
+	}
+
+	if r.numFailed > 0 {
+		return errors.Errorf("%d test(s) failed", r.numFailed)
+	}
+
+	return nil
 }
 
 // Print writes the "go test -v" output to standard output.
 func (r *GoTest) Print() error {
 	fmt.Println(strings.TrimRight(r.buf.String(), "\n"))
+
+	if r.numFailed > 0 {
+		return errors.Errorf("%d test(s) failed", r.numFailed)
+	}
 
 	return nil
 }
@@ -50,8 +64,10 @@ func (r *GoTest) Print() error {
 //
 ////////////////////////////////////////////////////////////////////////
 
-func produceResults(w io.Writer, checks <-chan workUnit) error {
+func produceResults(w io.Writer, checks <-chan workUnit) (int, error) {
 	catcher := grip.NewCatcher()
+
+	var failedCount int
 
 	for wu := range checks {
 		if wu.err != nil {
@@ -59,22 +75,30 @@ func produceResults(w io.Writer, checks <-chan workUnit) error {
 			continue
 		}
 
-		printTestResult(w, wu.output)
+		if !printTestResult(w, wu.output) {
+			failedCount++
+		}
 	}
 
-	return catcher.Resolve()
+	return failedCount, catcher.Resolve()
 }
 
-func printTestResult(w io.Writer, check greenbay.CheckOutput) {
+func printTestResult(w io.Writer, check greenbay.CheckOutput) bool {
 	fmt.Fprintln(w, "=== RUN", check.Name)
-	fmt.Fprintln(w, "    message:", check.Message)
-	fmt.Fprintln(w, "    error:", check.Error)
+	if check.Message != "" {
+		fmt.Fprintln(w, "    message:", check.Message)
+	}
+
+	if check.Error != "" {
+		fmt.Fprintln(w, "    error:", check.Error)
+	}
 
 	dur := check.Timing.Start.Sub(check.Timing.End)
 
 	if check.Passed {
 		fmt.Fprintf(w, "--- PASS: %s (%s)\n", check.Name, dur)
-	} else {
-		fmt.Fprintf(w, "--- FAIL: %s (%s)\n", check.Name, dur)
 	}
+	fmt.Fprintf(w, "--- FAIL: %s (%s)\n", check.Name, dur)
+
+	return check.Passed
 }

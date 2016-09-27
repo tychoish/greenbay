@@ -1,8 +1,10 @@
 package output
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -44,6 +46,10 @@ func (r *Results) ToFile(fn string) error {
 		return errors.Wrap(err, "problem writing results to json")
 	}
 
+	if r.out.failed {
+		return errors.New("tests failed")
+	}
+
 	return nil
 }
 
@@ -51,6 +57,10 @@ func (r *Results) ToFile(fn string) error {
 func (r *Results) Print() error {
 	if err := r.out.print(); err != nil {
 		return errors.Wrap(err, "problem printing results")
+	}
+
+	if r.out.failed {
+		return errors.New("tests failed")
 	}
 
 	return nil
@@ -65,6 +75,7 @@ func (r *Results) Print() error {
 // type definition and constructors
 
 type resultsDocument struct {
+	failed  bool
 	Results []*resultsItem `bson:"results" json:"results" yaml:"results"`
 }
 
@@ -110,21 +121,21 @@ func (r *resultsDocument) addItem(check greenbay.CheckOutput) {
 		Start:   check.Timing.Start,
 		End:     check.Timing.End,
 	}
+	r.Results = append(r.Results, item)
 
-	if check.Passed {
-		item.Status = "fail"
-	} else {
+	item.Status = "pass"
+
+	if !check.Passed {
 		item.Status = "pass"
 		item.Code = 1
+		r.failed = true
 	}
-
-	r.Results = append(r.Results, item)
 }
 
 // output production
 
 func (r *resultsDocument) write(w io.Writer) error {
-	out, err := json.MarshalIndent(r, "   ", "")
+	out, err := json.MarshalIndent(r, "   ", "   ")
 	if err != nil {
 		return errors.Wrap(err, "problem converting results to json")
 	}
@@ -132,6 +143,9 @@ func (r *resultsDocument) write(w io.Writer) error {
 	if _, err = w.Write(out); err != nil {
 		return errors.Wrapf(err, "problem writing results to %s (%T)", w, w)
 	}
+
+	// adding a newline, but if it errors we shouldn't care.
+	_, _ = w.Write([]byte("\n"))
 
 	return nil
 }
@@ -141,14 +155,14 @@ func (r *resultsDocument) print() error {
 }
 
 func (r *resultsDocument) writeToFile(fn string) error {
-	w, err := os.Create(fn)
-	if err != nil {
-		return errors.Wrapf(err, "problem opening file %s", fn)
-	}
-	defer grip.Error(w.Close())
+	buf := &bytes.Buffer{}
 
-	if err := r.write(w); err != nil {
-		return errors.Wrapf(err, "problem writing json to file: %s", fn)
+	if err := r.write(buf); err != nil {
+		return errors.Wrap(err, "problem extracting json to buffer")
+	}
+
+	if err := ioutil.WriteFile(fn, buf.Bytes(), 0644); err != nil {
+		return errors.Wrapf(err, "problem writing output to %s", fn)
 	}
 
 	grip.Infoln("wrote results document to:", fn)

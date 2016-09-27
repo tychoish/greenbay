@@ -1,6 +1,8 @@
 package output
 
 import (
+	"fmt"
+
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/greenbay"
 	"github.com/pkg/errors"
@@ -19,13 +21,20 @@ func jobsToCheck(jobs <-chan amboy.Job) <-chan workUnit {
 
 	go func() {
 		for j := range jobs {
+			fmt.Printf("%T: %+v\n", j, j)
 			c, err := convert(j)
+			if err != nil {
+				output <- workUnit{
+					output: greenbay.CheckOutput{},
+					err:    err,
+				}
+				continue
+			}
 
 			output <- workUnit{
 				output: c.Output(),
-				err:    err,
+				err:    nil,
 			}
-
 		}
 		close(output)
 	}()

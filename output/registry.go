@@ -1,6 +1,7 @@
 package output
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/tychoish/grip"
@@ -22,11 +23,13 @@ func init() {
 		factories: make(map[string]ResultsFactory),
 	}
 
-	registry.add("gotest", func() ResultsProducer {
-		return &GoTest{}
+	AddFactory("gotest", func() ResultsProducer {
+		return &GoTest{
+			buf: bytes.NewBuffer([]byte{}),
+		}
 	})
 
-	registry.add("result", func() ResultsProducer {
+	AddFactory("result", func() ResultsProducer {
 		return &Results{}
 	})
 }
