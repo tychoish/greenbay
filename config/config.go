@@ -24,13 +24,16 @@ type GreenbayTestConfig struct {
 }
 
 func newTestConfig() *GreenbayTestConfig {
-	conf := &GreenbayTestConfig{
-		tests:  make(map[string]amboy.Job),
-		suites: make(map[string][]string),
-	}
+	conf := &GreenbayTestConfig{}
+	conf.reset()
 	conf.Options.Jobs = runtime.NumCPU()
 
 	return conf
+}
+
+func (c *GreenbayTestConfig) reset() {
+	c.suites = make(map[string][]string)
+	c.tests = make(map[string]amboy.Job)
 }
 
 // ReadConfig takes a path name to a configuration file (yaml

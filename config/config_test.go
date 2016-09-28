@@ -170,13 +170,10 @@ func (s *ConfigSuite) TestForSuiteGetterObject() {
 func (s *ConfigSuite) TestForSuiteGetterGeneratorWithInvalidSuite() {
 	tests := s.conf.TestsForSuites("DOES-NOT-EXIST", "ALSO-DOES-NOT-EXIST")
 	s.NotNil(tests)
-	c := 0
 	for j := range tests {
 		s.Error(j.Err)
 		s.Nil(j.Job)
-		c++
 	}
-	s.Equal(0, c)
 }
 
 func (s *ConfigSuite) TestByNameGenerator() {
