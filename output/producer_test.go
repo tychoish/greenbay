@@ -80,7 +80,7 @@ func (s *ProducerSuite) SetupSuite() {
 		}
 
 		if i%2 == 0 {
-			check.Base.Errors = []error{errors.New("even!")}
+			check.Base.Errors = []error{errors.New("even")}
 		}
 
 		s.NoError(s.queue.Put(check))
@@ -104,7 +104,7 @@ func (s *ProducerSuite) TestPopulateOperationDoNotErrorWithBasicTasks() {
 }
 
 func (s *ProducerSuite) TestOutputMethodsFailIfJobsHaveErrors() {
-	// everthing is a pointer inside the queue so this should work:
+	// everything is a pointer inside the queue so this should work:
 	for t := range s.queue.Results() {
 		task := t.(*mockCheck)
 		task.Base.WasSuccessful = false

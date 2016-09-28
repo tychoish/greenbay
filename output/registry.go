@@ -33,7 +33,7 @@ func init() {
 		return &Results{}
 	})
 
-	AddFactory("logged", func() ResultsProducer {
+	AddFactory("log", func() ResultsProducer {
 		return &GripOutput{}
 	})
 }

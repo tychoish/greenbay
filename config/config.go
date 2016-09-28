@@ -8,7 +8,6 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
-	"github.com/tychoish/grip"
 )
 
 // GreenbayTestConfig defines the
@@ -92,7 +91,11 @@ func (c *GreenbayTestConfig) TestsForSuites(names ...string) <-chan JobWithError
 		for _, suite := range names {
 			tests, ok := c.suites[suite]
 			if !ok {
-				grip.Warningf("suite named '%s' does not exist", suite)
+				output <- JobWithError{
+					Job: nil,
+					Err: errors.Errorf("suite named '%s' does not exist", suite),
+				}
+
 				continue
 			}
 

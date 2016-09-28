@@ -24,6 +24,10 @@ type GoTest struct {
 // method) of an amboy.Queue instance. All jobs processed by that
 // queue must also implement the greenbay.Checker interface.
 func (r *GoTest) Populate(queue amboy.Queue) error {
+	if queue == nil {
+		return errors.New("cannot populate results with a nil queue")
+	}
+
 	numFailed, err := produceResults(r.buf, jobsToCheck(queue.Results()))
 	if err != nil {
 		return errors.Wrap(err, "problem generating gotest results")

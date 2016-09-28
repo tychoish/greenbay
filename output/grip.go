@@ -8,12 +8,23 @@ import (
 	"github.com/tychoish/grip/message"
 )
 
+// GripOutput provides a ResultsProducer implementation that writes
+// the results of a greenbay run to logging using the grip logging
+// package.
 type GripOutput struct {
 	passedMsgs []message.Composer
 	failedMsgs []message.Composer
 }
 
+// Populate generates output messages based on the content (via the
+// Results() method) of an amboy.Queue instance. All jobs processed by
+// that queue must also implement the greenbay.Checker
+// interface. Returns an error if there are any invalid jobs.
 func (r *GripOutput) Populate(queue amboy.Queue) error {
+	if queue == nil {
+		return errors.New("cannot populate results with a nil queue")
+	}
+
 	catcher := grip.NewCatcher()
 	for wu := range jobsToCheck(queue.Results()) {
 		if wu.err != nil {
@@ -36,6 +47,8 @@ func (r *GripOutput) Populate(queue amboy.Queue) error {
 	return catcher.Resolve()
 }
 
+// ToFile logs, to the specified file, the results of the greenbay
+// operation. If any tasks failed, this operation returns an error.
 func (r *GripOutput) ToFile(fn string) error {
 	logger := grip.NewJournaler("greenbay")
 	if err := logger.UseFileLogger(fn); err != nil {
@@ -55,6 +68,8 @@ func (r *GripOutput) ToFile(fn string) error {
 	return nil
 }
 
+// Print logs, to standard output, the results of the greenbay
+// operation. If any tasks failed, this operation returns an error.
 func (r *GripOutput) Print() error {
 	logger := grip.NewJournaler("greenbay")
 	if err := logger.UseNativeLogger(); err != nil {

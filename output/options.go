@@ -6,6 +6,9 @@ import (
 	"github.com/tychoish/grip"
 )
 
+// Options represents all operations for output generation, and
+// provides methods for accessing and producing results using that
+// configuration regardless of underlying output format.
 type Options struct {
 	writeFile   bool
 	writeStdOut bool
@@ -13,6 +16,9 @@ type Options struct {
 	format      string
 }
 
+// NewOptions provides a constructor to generate a valid Options
+// structure. Returns an error if the specified format is not valid or
+// registered.
 func NewOptions(fn, format string, quiet bool) (*Options, error) {
 	_, exists := GetResultsFactory(format)
 	if !exists {
@@ -31,6 +37,10 @@ func NewOptions(fn, format string, quiet bool) (*Options, error) {
 	return o, nil
 }
 
+// GetResultsProducer returns the ResultsProducer implementation
+// specified in the Options structure, and returns an error if the
+// format specified in the structure does not refer to a registered
+// type.
 func (o *Options) GetResultsProducer() (ResultsProducer, error) {
 	factory, ok := GetResultsFactory(o.format)
 	if !ok {
@@ -42,6 +52,10 @@ func (o *Options) GetResultsProducer() (ResultsProducer, error) {
 	return rp, nil
 }
 
+// ProduceResults takes an amboy.Queue object and produces results
+// according to the options specified in the Options
+// structure. ProduceResults returns an error if any of the tests
+// failed in the operation.
 func (o *Options) ProduceResults(q amboy.Queue) error {
 	rp, err := o.GetResultsProducer()
 	if err != nil {

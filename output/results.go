@@ -89,6 +89,10 @@ type resultsItem struct {
 }
 
 func newResultsDocument(queue amboy.Queue) (*resultsDocument, error) {
+	if queue == nil {
+		return nil, errors.New("cannot populate results with a nil queue")
+	}
+
 	r := &resultsDocument{}
 
 	if err := r.populate(jobsToCheck(queue.Results())); err != nil {
