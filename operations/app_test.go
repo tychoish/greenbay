@@ -139,3 +139,7 @@ func (s *AppSuite) TestAddTestHelperErrorsWithoutValidTests() {
 	s.True(q.Started())
 	s.Error(s.app.addTests(q))
 }
+
+// TODO: add tests that exercise successful runs and dispatch actual
+// tests and suites,but to do this we'll want to have better mock
+// tests and configs, so holding off on that.
