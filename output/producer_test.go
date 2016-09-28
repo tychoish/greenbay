@@ -52,6 +52,15 @@ func TestResultsProducerSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
+func TestGripProducerSuite(t *testing.T) {
+	s := new(ProducerSuite)
+	s.factory = func() ResultsProducer {
+		return &GripOutput{}
+	}
+
+	suite.Run(t, s)
+}
+
 // Fixtures for suite:
 
 func (s *ProducerSuite) SetupSuite() {

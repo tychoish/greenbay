@@ -32,6 +32,10 @@ func init() {
 	AddFactory("result", func() ResultsProducer {
 		return &Results{}
 	})
+
+	AddFactory("logged", func() ResultsProducer {
+		return &GripOutput{}
+	})
 }
 
 func (r *resultsRegistry) add(name string, factory ResultsFactory) {

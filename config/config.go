@@ -34,6 +34,45 @@ func newTestConfig() *GreenbayTestConfig {
 	return conf
 }
 
+// ReadConfig takes a path name to a configuration file (yaml
+// formatted,) and returns a configuration format.
+func ReadConfig(fn string) (*GreenbayTestConfig, error) {
+	data, err := ioutil.ReadFile(fn)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem reading greenbay config file: %s", fn)
+	}
+
+	format, err := getFormat(fn)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem determining format of file %s", fn)
+	}
+
+	// Parse data:
+	data, err = getJSONFormatedConfig(format, data)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem parsing config from file %s", fn)
+	}
+
+	c := newTestConfig()
+	// we don't take the lock here because this function doesn't
+	// spawn threads, and nothing else can see the object we're
+	// building. If either of those things change we should take
+	// the lock here.
+
+	// now we have a json formated byte slice in data and we can
+	// unmarshal it as we want.
+	err = json.Unmarshal(data, c)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem parsing config: %s", fn)
+	}
+
+	err = c.parseTests()
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem parsing tests from file: %s", fn)
+	}
+	return c, nil
+}
+
 // JobWithError is a type used by the test generators and contains an
 // amboy.Job and an error message.
 type JobWithError struct {
@@ -110,50 +149,10 @@ func (c *GreenbayTestConfig) TestsByName(names ...string) <-chan JobWithError {
 			}
 
 			output <- JobWithError{Job: j, Err: nil}
-
 		}
 
 		close(output)
 	}()
 
 	return output
-}
-
-// ReadConfig takes a path name to a configuration file (yaml
-// formatted,) and returns a configuration format.
-func ReadConfig(fn string) (*GreenbayTestConfig, error) {
-	data, err := ioutil.ReadFile(fn)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem reading greenbay config file: %s", fn)
-	}
-
-	format, err := getFormat(fn)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem determining format of file %s", fn)
-	}
-
-	// Parse data:
-	data, err = getJSONFormatedConfig(format, data)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem parsing config from file %s", fn)
-	}
-
-	c := newTestConfig()
-	// we don't take the lock here because this function doesn't
-	// spawn threads, and nothing else can see the object we're
-	// building. If either of those things change we should take
-	// the lock here.
-
-	// now we have a json formated byte slice in data and we can
-	// unmarshal it as we want.
-	err = json.Unmarshal(data, c)
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem parsing config: %s", fn)
-	}
-
-	err = c.parseTests()
-	if err != nil {
-		return nil, errors.Wrapf(err, "problem parsing tests from file: %s", fn)
-	}
-	return c, nil
 }

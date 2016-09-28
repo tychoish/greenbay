@@ -97,8 +97,9 @@ func printTestResult(w io.Writer, check greenbay.CheckOutput) bool {
 
 	if check.Passed {
 		fmt.Fprintf(w, "--- PASS: %s (%s)\n", check.Name, dur)
+	} else {
+		fmt.Fprintf(w, "--- FAIL: %s (%s)\n", check.Name, dur)
 	}
-	fmt.Fprintf(w, "--- FAIL: %s (%s)\n", check.Name, dur)
 
 	return check.Passed
 }
