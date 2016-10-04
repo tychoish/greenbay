@@ -26,7 +26,7 @@ func init() {
 	name := "mock-check"
 	registry.AddJobType(name, func() amboy.Job {
 		return &MockCheck{
-			Base: NewBase(name, 0),
+			Base: NewBase(name, 0), // (name, version)
 		}
 	})
 }
