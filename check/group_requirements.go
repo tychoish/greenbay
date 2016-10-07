@@ -33,3 +33,22 @@ func (gr GroupRequirements) GetResults(passes, failures int) (bool, err) {
 
 	return true, nil
 }
+
+func (gr GroupRequirements) Validate() err {
+	opts := []bool{gr.All, gr.Any, gr.One, gr.None}
+	active := 0
+
+	for _, opt := range opts {
+		if opt {
+			active++
+		}
+	}
+
+	if active != 1 {
+		return errors.Errorf("specified incorrect number of options for a '%s' check: "+
+			"[all=%t, one=%t, any=%t, none=%t]", gr.Name,
+			gr.All, gr.One, gr.Any, gr.None)
+	}
+
+	return nil
+}

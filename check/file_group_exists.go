@@ -65,42 +65,26 @@ type fileGroup struct {
 	*Base
 }
 
-func (c *fileGroup) validate() bool {
-	opts := []bool{c.allFiles, c.anyFile, c.oneFile}
-	active := 0
-
-	for _, opt := range opts {
-		if opt {
-			active++
-		}
-	}
-
-	if active != 1 {
-		c.addError(errors.Errorf("specified incorrect number of options for a '%s' check: "+
-			"[all=%t, one=%t, any=%t, none=%t]", c.Name(),
-			c.allFiles, c.oneFile, c.anyFile, c.noFiles))
-		return false
-	}
-
-	if len(c.FileNames) < 1 {
-		c.addError(errors.Errorf("no files specified for '%s' check", c.Name()))
-		return false
-	}
-
-	return true
-}
-
 func (c *fileGroup) Run() {
 	c.startTask()
 	defer c.markComplete()
 
-	if !c.validate() {
+	if err := c.Requirements.Validate(); err != nil {
 		c.setState(false)
+		c.addError(err)
+		return
+	}
+
+	if len(c.FileNames) == 0 {
+		c.setState(false)
+		c.addError(errors.Errorf("no files specified for '%s' (%s) check",
+			c.ID(), c.Name()))
 		return
 	}
 
 	var extantFiles []string
 	var missingFiles []string
+
 	for _, fn := range c.FileNames {
 		stat, err := os.Stat(fn)
 		grip.Debugf("file '%s' stat: %+v", fn, stat)
@@ -118,10 +102,11 @@ func (c *fileGroup) Run() {
 		strings.Join(extantFiles, ", "), strings.Join(missingFiles, ", "))
 	grip.Debug(msg)
 
-	success := c.getResults(extantFiles, missingFiles)
-	c.setState(success)
+	result, err := c.Requirements.GetResults(len(extantFiles), len(missingFiles))
+	c.setState(result)
+	c.addError(err)
 
-	if !success {
+	if !result {
 		c.setMessage(msg)
 	}
 }

@@ -3,6 +3,7 @@ package check
 import (
 	"strings"
 
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/greenbay"
 	"github.com/pkg/errors"
@@ -12,12 +13,45 @@ func init() {
 	var name string
 
 	name = "all-commands"
-	registry.AddJobType(name, func() amby.Job {
+	registry.AddJobType(name, func() amboy.Job {
 		return &shellGroup{
 			Base: NewBase(name, 0),
 			Requirements: GroupRequirements{
 				Name: name,
 				All:  true,
+			},
+		}
+	})
+
+	name = "any-command"
+	registry.AddJobType(name, func() amboy.Job {
+		return &shellGroup{
+			Base: NewBase(name, 0),
+			Requirements: GroupRequirements{
+				Name: name,
+				Any:  true,
+			},
+		}
+	})
+
+	name = "one-command"
+	registry.AddJobType(name, func() amboy.Job {
+		return &shellGroup{
+			Base: NewBase(name, 0),
+			Requirements: GroupRequirements{
+				Name: name,
+				One:  true,
+			},
+		}
+	})
+
+	name = "no-commands"
+	registry.AddJobType(name, func() amboy.Job {
+		return &shellGroup{
+			Base: NewBase(name, 0),
+			Requirements: GroupRequirements{
+				Name: name,
+				None: true,
 			},
 		}
 	})
@@ -34,8 +68,21 @@ func (c *shellGroup) Run() {
 	c.startTask()
 	defer c.markComplete()
 
-	success := []*greenbay.CheckOutput{}
-	failure := []*greenbay.CheckOutput{}
+	if err := c.Requirements.Validate(); err != nil {
+		c.setState(false)
+		c.addError(err)
+		return
+	}
+
+	if len(c.Commands) == 0 {
+		c.setState(false)
+		c.addError(errors.Errorf("no files specified for '%s' (%s) check",
+			c.ID(), c.Name()))
+		return
+	}
+
+	var success []*greenbay.CheckOutput
+	var failure []*greenbay.CheckOutput
 
 	for _, cmd := range c.Commands {
 		cmd.Run()
@@ -48,7 +95,7 @@ func (c *shellGroup) Run() {
 		}
 	}
 
-	result, err := c.gr.GroupSatisfiesRequirements(len(success), len(failure))
+	result, err := c.Requirements.GetResults(len(success), len(failure))
 	c.setState(result)
 	c.addError(err)
 
@@ -57,22 +104,22 @@ func (c *shellGroup) Run() {
 		var errs []string
 
 		printableResults := []*greenbay.CheckOutput{}
-		if c.gr.None {
+		if c.Requirements.None {
 			printableResults = success
-		} else if c.gr.Any || c.gr.One {
+		} else if c.Requirements.Any || c.Requirements.One {
 			printableResults = success
 			printableResults = append(printableResults, failure...)
 		} else {
 			printableResults = failure
 		}
 
-		for _, failedCmd := range printableResults {
-			if failedCmd.Message != "" {
-				output = append(output, failedCmd.Message)
+		for _, cmd := range printableResults {
+			if cmd.Message != "" {
+				output = append(output, cmd.Message)
 			}
 
-			if failedCmd.Error != "" {
-				errs = append(errs, failedCmd.Error)
+			if cmd.Error != "" {
+				errs = append(errs, cmd.Error)
 			}
 		}
 
