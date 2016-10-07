@@ -1,0 +1,15 @@
+configuration:
+  continue_on_error: false
+  report_format: gotest
+  jobs: 2
+tests:
+  - name: test-one
+    suites: [ "all" ]
+    type: "noop"
+    args:
+      succeed: true
+  - name: test-two
+    suites: [ "all" ]
+    type: "noop"
+    args:
+      succeed: false

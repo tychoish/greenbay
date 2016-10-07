@@ -1,7 +1,7 @@
 # start project configuration
 name := greenbay
 buildDir := build
-packages := operations main
+packages := config check output operations main
 orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -21,7 +21,7 @@ lintArgs += --skip="build" --skip="buildscripts"
 #   enable and configure additional linters
 lintArgs += --enable="go fmt -s" --enable="goimports"
 lintArgs += --linter='misspell:misspell ./*.go:PATH:LINE:COL:MESSAGE' --enable=misspell
-lintArgs += --line-length=100 --dupl-threshold=100 --cyclo-over=15
+lintArgs += --line-length=100 --dupl-threshold=120 --cyclo-over=15
 #   the gotype linter has an imperfect compilation simulator and
 #   produces the following false postive errors:
 lintArgs += --exclude="error: could not import github.com/mongodb/greenbay"
@@ -160,7 +160,7 @@ testArgs := -v --timeout=20m
 $(buildDir)/coverage.%.html:$(buildDir)/coverage.%.out
 	$(vendorGopath) go tool cover -html=$< -o $@
 $(buildDir)/coverage.%.out:$(testRunDeps)
-	$(vendorGopath) go test -v -covermode=count -coverprofile=$@ $(projectPath)/$*
+	$(vendorGopath) go test -covermode=count -coverprofile=$@ $(projectPath)/$*
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/coverage.$(name).out:$(testRunDeps)
 	$(vendorGopath) go test -covermode=count -coverprofile=$@ $(projectPath)
