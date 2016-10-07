@@ -10,7 +10,7 @@ type GroupRequirements struct {
 	Name string
 }
 
-func (gr GroupRequirements) GetResults(passes, failures int) (bool, err) {
+func (gr GroupRequirements) GetResults(passes, failures int) (bool, error) {
 	if gr.All {
 		if failures > 0 {
 			return false, nil
@@ -34,7 +34,7 @@ func (gr GroupRequirements) GetResults(passes, failures int) (bool, err) {
 	return true, nil
 }
 
-func (gr GroupRequirements) Validate() err {
+func (gr GroupRequirements) Validate() error {
 	opts := []bool{gr.All, gr.Any, gr.One, gr.None}
 	active := 0
 
