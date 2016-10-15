@@ -2,6 +2,9 @@ package check
 
 import "github.com/pkg/errors"
 
+// GroupRequirements provides a way to express expected outcomes for
+// checks that include multiple constituent checks. (e.g. a list of
+// files that must exist or a list of commands to run.)
 type GroupRequirements struct {
 	Any  bool
 	One  bool
@@ -10,6 +13,8 @@ type GroupRequirements struct {
 	Name string
 }
 
+// GetResults takes numbers of passed and failed tasks and reports if
+// the check should succeed.
 func (gr GroupRequirements) GetResults(passes, failures int) (bool, error) {
 	if gr.All {
 		if failures > 0 {
@@ -34,7 +39,14 @@ func (gr GroupRequirements) GetResults(passes, failures int) (bool, error) {
 	return true, nil
 }
 
+// Validate checks the GroupRequirements structure and ensures that
+// the specified results are valid and that there are no contradictory
+// or impossible expectations.
 func (gr GroupRequirements) Validate() error {
+	if gr.Name == "" {
+		return errors.New("no name specified for group requirements specification")
+	}
+
 	opts := []bool{gr.All, gr.Any, gr.One, gr.None}
 	active := 0
 

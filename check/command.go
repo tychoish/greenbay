@@ -14,21 +14,21 @@ import (
 func init() {
 	var name string
 
-	name = "shell-operation"
-	registry.AddJobType(name, func() amboy.Job {
-		return &shellOperation{
-			Environment: make(map[string]string),
-			shouldFail:  false,
+	shellOperationFactoryFactory := func(name string, shouldFail bool) func() amboy.Job {
+		return func() amboy.Job {
+			return &shellOperation{
+				Environment: make(map[string]string),
+				shouldFail:  shouldFail,
+				Base:        NewBase(name, 0), // (name, version)
+			}
 		}
-	})
+	}
+
+	name = "shell-operation"
+	registry.AddJobType(name, shellOperationFactoryFactory(name, false))
 
 	name = "shell-operation-error"
-	registry.AddJobType(name, func() amboy.Job {
-		return &shellOperation{
-			Environment: make(map[string]string),
-			shouldFail:  true,
-		}
-	})
+	registry.AddJobType(name, shellOperationFactoryFactory(name, true))
 }
 
 type shellOperation struct {
@@ -46,6 +46,10 @@ func (c *shellOperation) Run() {
 
 	logMsg := []string{fmt.Sprintf("command='%s'", c.Command)}
 
+	// I don't like "sh -c" as a thing, but it parallels the way
+	// that Evergreen runs tasks (for now,) and it gets us away
+	// from needing to do special shlex parsing, though
+	// (https://github.com/google/shlex) seems like a good start.
 	cmd := exec.Command("sh", "-c", c.Command)
 	if c.WorkingDirectory != "" {
 		cmd.Dir = c.WorkingDirectory
@@ -61,29 +65,27 @@ func (c *shellOperation) Run() {
 		logMsg = append(logMsg, fmt.Sprintf("env='%s'", strings.Join(env, " ")))
 	}
 
-	grip.Info(strings.Join(logMsg, ", "))
+	c.setState(true) // default to pass
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		c.setState(c.shouldFail)
-
-		c.addError(err)
-		if out == nil {
-			3
-			m := fmt.Sprintf("could not execute command, check %s (%s) automatically fails",
-				c.ID(), c.Name())
-			c.setMessage(m)
-			grip.Debug(m)
-			return
-		}
+		logMsg = append(logMsg, fmt.Sprintf("err='%+v'", err))
 
 		c.setMessage(string(out))
-		c.addError(errors.Wrapf(err, "command failed",
-			c.ID(), c.Command))
 
+		if !c.shouldFail {
+			c.setState(false)
+			c.addError(errors.Wrapf(err, "command failed",
+				c.ID(), c.Command))
+		}
+	} else if c.shouldFail {
+		c.setState(false)
+		c.addError(errors.Errorf("command '%s' succeeded but test expects it to fail",
+			c.Command))
 	}
 
-	c.setState(!c.shouldFail)
-	if !c.WasSuccessful {
+	grip.Info(strings.Join(logMsg, ", "))
+
+	if !c.getState() {
 		c.setMessage(string(out))
 	}
 

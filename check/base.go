@@ -98,6 +98,13 @@ func (b *Base) setState(result bool) {
 	b.WasSuccessful = result
 }
 
+func (b *Base) getState() bool {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
+	return b.WasSuccessful
+}
+
 func (b *Base) setMessage(m interface{}) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()

@@ -14,49 +14,27 @@ import (
 func init() {
 	var name string
 
-	name = "all-files"
-	registry.AddJobType(name, func() amboy.Job {
-		return &fileGroup{
-			Base: NewBase(name, 0), // (name, version)
-			Requirements: GroupRequirements{
-				Name: name,
-				All:  true,
-			},
+	fileGroupFactoryFactory := func(name string, gr GroupRequirements) func() amboy.Job {
+		gr.Name = name
+		return func() amboy.Job {
+			return &fileGroup{
+				Base:         NewBase(name, 0),
+				Requirements: gr,
+			}
 		}
-	})
+	}
+
+	name = "all-files"
+	registry.AddJobType(name, fileGroupFactoryFactory(name, GroupRequirements{All: true}))
 
 	name = "any-file"
-	registry.AddJobType(name, func() amboy.Job {
-		return &fileGroup{
-			Base: NewBase(name, 0), // (name, version)
-			Requirements: GroupRequirements{
-				Name: name,
-				Any:  true,
-			},
-		}
-	})
+	registry.AddJobType(name, fileGroupFactoryFactory(name, GroupRequirements{Any: true}))
 
 	name = "one-file"
-	registry.AddJobType(name, func() amboy.Job {
-		return &fileGroup{
-			Base: NewBase(name, 0), // (name, version)
-			Requirements: GroupRequirements{
-				Name: name,
-				One:  true,
-			},
-		}
-	})
+	registry.AddJobType(name, fileGroupFactoryFactory(name, GroupRequirements{One: true}))
 
 	name = "no-files"
-	registry.AddJobType(name, func() amboy.Job {
-		return &fileGroup{
-			Base: NewBase(name, 0), // (name, version)
-			Requirements: GroupRequirements{
-				Name: name,
-				None: true,
-			},
-		}
-	})
+	registry.AddJobType(name, fileGroupFactoryFactory(name, GroupRequirements{None: true}))
 }
 
 type fileGroup struct {
@@ -108,5 +86,6 @@ func (c *fileGroup) Run() {
 
 	if !result {
 		c.setMessage(msg)
+		c.addError(errors.New("group of files do not satisfy check requirements."))
 	}
 }

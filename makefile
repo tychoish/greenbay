@@ -21,10 +21,15 @@ lintArgs += --skip="build" --skip="buildscripts"
 #   enable and configure additional linters
 lintArgs += --enable="go fmt -s" --enable="goimports"
 lintArgs += --linter='misspell:misspell ./*.go:PATH:LINE:COL:MESSAGE' --enable=misspell
-lintArgs += --line-length=100 --dupl-threshold=120 --cyclo-over=15
+lintArgs += --line-length=100 --dupl-threshold=150 --cyclo-over=15
 #   the gotype linter has an imperfect compilation simulator and
 #   produces the following false postive errors:
 lintArgs += --exclude="error: could not import github.com/mongodb/greenbay"
+#   some test cases are structurally similar, and set of the dupl
+#   linter, but are important to maintain seperatly, and would be
+#   difficult to test without a much more complex reflection/code
+#   generation approach, so we ignore dupl errors in tests.
+lintArgs += --exclude="warning: duplicate of .*_test.go"
 #   go lint warns on an error in docstring format, erroneously because
 #   it doesn't consider the entire package.
 lintArgs += --exclude="warning: package comment should be of the form \"Package .* ...\""

@@ -1,6 +1,7 @@
 package check
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -10,21 +11,21 @@ import (
 )
 
 func init() {
-	name := "file-exists"
-	registry.AddJobType(name, func() amboy.Job {
-		return &fileExistance{
-			ShouldExist: true,
-			Base:        NewBase(name, 0), // (name, version)
+	fileExistsFactoryFactory := func(name string, shouldExist bool) func() amboy.Job {
+		return func() amboy.Job {
+			return &fileExistance{
+				ShouldExist: shouldExist,
+				Base:        NewBase(name, 0), // (name, version)
+			}
 		}
-	})
+
+	}
+
+	name := "file-exists"
+	registry.AddJobType(name, fileExistsFactoryFactory(name, true))
 
 	name = "file-does-not-exist"
-	registry.AddJobType(name, func() amboy.Job {
-		return &fileExistance{
-			ShouldExist: false,
-			Base:        NewBase(name, 0), // (name, version)
-		}
-	})
+	registry.AddJobType(name, fileExistsFactoryFactory(name, false))
 }
 
 type fileExistance struct {
@@ -41,9 +42,14 @@ func (c *fileExistance) Run() {
 	var verb string
 
 	stat, err := os.Stat(c.FileName)
-	fileExists = os.IsNotExist(err)
+	fileExists = !os.IsNotExist(err)
+
+	fmt.Println(fmt.Sprintf("%+v, %+v", stat, err), c.FileName, fileExists, c.ShouldExist, fileExists == c.ShouldExist)
 
 	c.setState(fileExists == c.ShouldExist)
+	if fileExists != c.ShouldExist {
+		c.addError(errors.New("file existence check did not detect expected state"))
+	}
 
 	if c.ShouldExist {
 		verb = "should"
@@ -51,7 +57,7 @@ func (c *fileExistance) Run() {
 		verb = "should not"
 	}
 
-	m := fmt.Sprintf("file '%s' %s exist. stats=%+v", c.Name, verb, stat)
+	m := fmt.Sprintf("file '%s' %s exist. stats=%+v", c.FileName, verb, stat)
 	grip.Debug(m)
 	c.setMessage(m)
 }

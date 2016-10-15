@@ -7,55 +7,33 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/greenbay"
 	"github.com/pkg/errors"
+	"github.com/tychoish/grip"
 )
 
 func init() {
 	var name string
 
-	name = "all-commands"
-	registry.AddJobType(name, func() amboy.Job {
-		return &shellGroup{
-			Base: NewBase(name, 0),
-			Requirements: GroupRequirements{
-				Name: name,
-				All:  true,
-			},
+	commandGroupFactoryFactory := func(name string, gr GroupRequirements) func() amboy.Job {
+		gr.Name = name
+		return func() amboy.Job {
+			return &shellGroup{
+				Base:         NewBase(name, 0),
+				Requirements: gr,
+			}
 		}
-	})
+	}
+
+	name = "all-commands"
+	registry.AddJobType(name, commandGroupFactoryFactory(name, GroupRequirements{All: true}))
 
 	name = "any-command"
-	registry.AddJobType(name, func() amboy.Job {
-		return &shellGroup{
-			Base: NewBase(name, 0),
-			Requirements: GroupRequirements{
-				Name: name,
-				Any:  true,
-			},
-		}
-	})
+	registry.AddJobType(name, commandGroupFactoryFactory(name, GroupRequirements{Any: true}))
 
 	name = "one-command"
-	registry.AddJobType(name, func() amboy.Job {
-		return &shellGroup{
-			Base: NewBase(name, 0),
-			Requirements: GroupRequirements{
-				Name: name,
-				One:  true,
-			},
-		}
-	})
+	registry.AddJobType(name, commandGroupFactoryFactory(name, GroupRequirements{One: true}))
 
 	name = "no-commands"
-	registry.AddJobType(name, func() amboy.Job {
-		return &shellGroup{
-			Base: NewBase(name, 0),
-			Requirements: GroupRequirements{
-				Name: name,
-				None: true,
-			},
-		}
-	})
-
+	registry.AddJobType(name, commandGroupFactoryFactory(name, GroupRequirements{None: true}))
 }
 
 type shellGroup struct {
@@ -98,6 +76,8 @@ func (c *shellGroup) Run() {
 	result, err := c.Requirements.GetResults(len(success), len(failure))
 	c.setState(result)
 	c.addError(err)
+	grip.Debugf("task '%s' recieved result %t, with %d successes and %d failures",
+		c.ID(), result, len(success), len(failure))
 
 	if !result {
 		var output []string
