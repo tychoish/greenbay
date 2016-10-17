@@ -11,9 +11,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-func init() {
-	var name string
-
+func registerFileGroupChecks() {
 	fileGroupFactoryFactory := func(name string, gr GroupRequirements) func() amboy.Job {
 		gr.Name = name
 		return func() amboy.Job {
@@ -24,23 +22,16 @@ func init() {
 		}
 	}
 
-	name = "all-files"
-	registry.AddJobType(name, fileGroupFactoryFactory(name, GroupRequirements{All: true}))
-
-	name = "any-file"
-	registry.AddJobType(name, fileGroupFactoryFactory(name, GroupRequirements{Any: true}))
-
-	name = "one-file"
-	registry.AddJobType(name, fileGroupFactoryFactory(name, GroupRequirements{One: true}))
-
-	name = "no-files"
-	registry.AddJobType(name, fileGroupFactoryFactory(name, GroupRequirements{None: true}))
+	for group, requirements := range groupRequirementRegistry {
+		name := fmt.Sprintf("file-group-", group)
+		registry.AddJobType(name, fileGroupFactoryFactory(name, requirements))
+	}
 }
 
 type fileGroup struct {
 	FileNames    []string          `bson:"file_names" json:"file_names" yaml:"file_names"`
 	Requirements GroupRequirements `bson:"requirements" json:"requirements" yaml:"requirements"`
-	*Base
+	*Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
 func (c *fileGroup) Run() {

@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/greenbay"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/tychoish/grip"
 )
 
 type CheckSuite struct {
@@ -19,85 +20,10 @@ type CheckSuite struct {
 	suite.Suite
 }
 
-// Test constructors. For every new check, you should register a new
-// version of the suite, specifying a different "name" value.
-
-func TestMockCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "mock-check"
-	suite.Run(t, s)
-}
-
-func TestShellOperationNoErrorCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "shell-operation"
-	suite.Run(t, s)
-}
-
-func TestShellOperationErrorCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "shell-operation-error"
-	suite.Run(t, s)
-}
-
-func TestShellGroupOperationAllCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "all-commands"
-	suite.Run(t, s)
-}
-
-func TestShellGroupOperationAnyCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "any-command"
-	suite.Run(t, s)
-}
-
-func TestShellGroupOperationOneCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "one-command"
-	suite.Run(t, s)
-}
-
-func TestShellGroupOperationNoneCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "no-commands"
-	suite.Run(t, s)
-}
-
-func TestFileExistsCheck(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "file-exists"
-	suite.Run(t, s)
-}
-
-func TestFileDoesNotExistsCheck(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "file-does-not-exist"
-	suite.Run(t, s)
-}
-
-func TestFileGroupExistsAllCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "all-files"
-	suite.Run(t, s)
-}
-
-func TestFileGroupExistsAnyCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "any-file"
-	suite.Run(t, s)
-}
-
-func TestFileGroupExistsOneCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "one-file"
-	suite.Run(t, s)
-}
-
-func TestFileGroupExistsNoneCheckSuite(t *testing.T) {
-	s := new(CheckSuite)
-	s.name = "no-files"
-	suite.Run(t, s)
+func TestCheckSuite(t *testing.T) {
+	for name := range registry.JobTypeNames() {
+		suite.Run(t, &CheckSuite{name: name})
+	}
 }
 
 // Test Fixtures
@@ -108,6 +34,7 @@ func (s *CheckSuite) SetupSuite() {
 	s.NoError(err)
 
 	s.factory = factory
+	grip.Infoln("running check suite for", s.name)
 }
 
 func (s *CheckSuite) SetupTest() {

@@ -12,23 +12,18 @@ import (
 )
 
 func init() {
-	var name string
-
-	shellOperationFactoryFactory := func(name string, shouldFail bool) func() amboy.Job {
-		return func() amboy.Job {
+	for name, shouldFail := range map[string]bool{
+		"shell-operation":       false,
+		"shell-operation-error": true,
+	} {
+		registry.AddJobType(name, func() amboy.Job {
 			return &shellOperation{
 				Environment: make(map[string]string),
 				shouldFail:  shouldFail,
 				Base:        NewBase(name, 0), // (name, version)
 			}
-		}
+		})
 	}
-
-	name = "shell-operation"
-	registry.AddJobType(name, shellOperationFactoryFactory(name, false))
-
-	name = "shell-operation-error"
-	registry.AddJobType(name, shellOperationFactoryFactory(name, true))
 }
 
 type shellOperation struct {
@@ -37,7 +32,7 @@ type shellOperation struct {
 	Environment      map[string]string `bson:"environment" json:"environment" yaml:"environment"`
 	shouldFail       bool
 
-	*Base
+	*Base `bson:"base" json:"base" yaml:"base"`
 }
 
 func (c *shellOperation) Run() {

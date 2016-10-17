@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/greenbay/check"
 	"github.com/mongodb/greenbay/operations"
 	"github.com/pkg/errors"
 	"github.com/tychoish/grip"
@@ -39,8 +41,13 @@ func buildApp() *cli.App {
 
 	// Register sub-commands here.
 	app.Commands = []cli.Command{
+		list(),
 		checks(),
 	}
+
+	// need to call a function in the check package so that the
+	// init() methods fire.
+	_ = check.NewBase("", -1)
 
 	// These are global options. Use this to configure logging or
 	// other options independent from specific sub commands.
@@ -81,6 +88,28 @@ func loggingSetup(name, level string) error {
 // Define SubCommands
 //
 ////////////////////////////////////////////////////////////////////////
+
+func list() cli.Command {
+	return cli.Command{
+		Name:  "list",
+		Usage: "list all available checks",
+		Action: func(c *cli.Context) error {
+			var seen int
+			fmt.Println("Registered Greenbay Checks:")
+			for name := range registry.JobTypeNames() {
+				seen++
+				fmt.Println("\t", name)
+			}
+
+			if seeen == 0 {
+				return errors.New("no jobs registered")
+			}
+
+			grip.Info("%d checks registered", seen)
+			return nil
+		},
+	}
+}
 
 func checks() cli.Command {
 	defaultNumJobs := runtime.NumCPU()

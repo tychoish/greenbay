@@ -1,6 +1,7 @@
 package check
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/mongodb/amboy"
@@ -10,9 +11,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-func init() {
-	var name string
-
+func registerCommandGroupChecks() {
 	commandGroupFactoryFactory := func(name string, gr GroupRequirements) func() amboy.Job {
 		gr.Name = name
 		return func() amboy.Job {
@@ -23,17 +22,10 @@ func init() {
 		}
 	}
 
-	name = "all-commands"
-	registry.AddJobType(name, commandGroupFactoryFactory(name, GroupRequirements{All: true}))
-
-	name = "any-command"
-	registry.AddJobType(name, commandGroupFactoryFactory(name, GroupRequirements{Any: true}))
-
-	name = "one-command"
-	registry.AddJobType(name, commandGroupFactoryFactory(name, GroupRequirements{One: true}))
-
-	name = "no-commands"
-	registry.AddJobType(name, commandGroupFactoryFactory(name, GroupRequirements{None: true}))
+	for group, requirements := range groupRequirementRegistry {
+		name := fmt.Sprintf("command-group-", group)
+		registry.AddJobType(name, commandGroupFactoryFactory(name, requirements))
+	}
 }
 
 type shellGroup struct {

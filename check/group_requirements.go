@@ -2,6 +2,11 @@ package check
 
 import "github.com/pkg/errors"
 
+// this is populated in init.go's init(), to avoid init() ordering
+// effects. Only used during the init process, so we don't need locks
+// for this.
+var groupRequirementRegistry map[string]GroupRequirements
+
 // GroupRequirements provides a way to express expected outcomes for
 // checks that include multiple constituent checks. (e.g. a list of
 // files that must exist or a list of commands to run.)
