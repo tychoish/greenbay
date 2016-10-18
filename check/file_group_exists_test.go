@@ -23,7 +23,7 @@ func (s *FileGroupSuite) SetupSuite() {
 }
 
 func (s *FileGroupSuite) SetupTest() {
-	factory, err := registry.GetJobFactory("all-files")
+	factory, err := registry.GetJobFactory("file-group-all")
 	s.require.NoError(err)
 	check, ok := factory().(*fileGroup)
 	s.require.True(ok)
@@ -43,7 +43,7 @@ func (s *FileGroupSuite) TestWithInvalidRequirements() {
 	s.Error(s.group.Error())
 }
 
-func (s *FileGroupSuite) TestOneExtantFileWIthAllRequirement() {
+func (s *FileGroupSuite) TestOneExtantFileWithAllRequirement() {
 	s.group.FileNames = []string{"../makefile"}
 	s.True(s.group.Requirements.All)
 	s.NoError(s.group.Requirements.Validate())

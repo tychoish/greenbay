@@ -23,7 +23,7 @@ func registerCommandGroupChecks() {
 	}
 
 	for group, requirements := range groupRequirementRegistry {
-		name := fmt.Sprintf("command-group-", group)
+		name := fmt.Sprintf("command-group-%s", group)
 		registry.AddJobType(name, commandGroupFactoryFactory(name, requirements))
 	}
 }
@@ -31,7 +31,7 @@ func registerCommandGroupChecks() {
 type shellGroup struct {
 	Commands     []*shellOperation `bson:"commands" json:"commands" yaml:"commands"`
 	Requirements GroupRequirements `bson:"requirements" json:"requirements" yaml:"requirements"`
-	*Base
+	*Base        `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
 func (c *shellGroup) Run() {
@@ -68,7 +68,7 @@ func (c *shellGroup) Run() {
 	result, err := c.Requirements.GetResults(len(success), len(failure))
 	c.setState(result)
 	c.addError(err)
-	grip.Debugf("task '%s' recieved result %t, with %d successes and %d failures",
+	grip.Debugf("task '%s' received result %t, with %d successes and %d failures",
 		c.ID(), result, len(success), len(failure))
 
 	if !result {

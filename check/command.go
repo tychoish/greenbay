@@ -16,11 +16,12 @@ func init() {
 		"shell-operation":       false,
 		"shell-operation-error": true,
 	} {
-		registry.AddJobType(name, func() amboy.Job {
+		jobName := name
+		registry.AddJobType(jobName, func() amboy.Job {
 			return &shellOperation{
 				Environment: make(map[string]string),
 				shouldFail:  shouldFail,
-				Base:        NewBase(name, 0), // (name, version)
+				Base:        NewBase(jobName, 0), // (name, version)
 			}
 		})
 	}

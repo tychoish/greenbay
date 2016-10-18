@@ -2,6 +2,7 @@ package check
 
 import (
 	"os/exec"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -15,14 +16,15 @@ var packageCheckerRegistry map[string]packageChecker
 
 func packageCheckerFactory(args []string) packageChecker {
 	return func(name string) (bool, string, error) {
-		args = append(args, name)
+		localArgs := append(args, name)
 
-		out, err := exec.Command(args[0], args[1]...).CombinedOutput()
+		out, err := exec.Command(localArgs[0], localArgs[1:]...).CombinedOutput()
+		output := strings.Trim(string(out), "\n\t ")
 		if err != nil {
-			return false, string(out), errors.Errorf("%s package '%s' is not installed (%s)",
-				args[0], name, err.Error())
+			return false, output, errors.Errorf("%s package '%s' is not installed (%s)",
+				localArgs[0], name, err.Error())
 		}
 
-		return true, string(out), nil
+		return true, output, nil
 	}
 }

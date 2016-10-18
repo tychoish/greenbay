@@ -23,7 +23,7 @@ func registerFileGroupChecks() {
 	}
 
 	for group, requirements := range groupRequirementRegistry {
-		name := fmt.Sprintf("file-group-", group)
+		name := fmt.Sprintf("file-group-%s", group)
 		registry.AddJobType(name, fileGroupFactoryFactory(name, requirements))
 	}
 }

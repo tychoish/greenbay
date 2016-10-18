@@ -3,6 +3,7 @@ package check
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/mongodb/amboy"
@@ -76,16 +77,18 @@ func (c *pythonModuleVersion) Run() {
 		fmt.Sprintf("import %s; print(%s)", c.Module, c.Statement),
 	}
 
-	cmd := exec.Command(cmdArgs[0], cmdArgs[1:])
-	version, err := cmd.Output()
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	fmt.Println(strings.Join(cmdArgs, " "), "-->", c.Relationship)
+	versionOut, err := cmd.Output()
+	version := strings.Trim(string(versionOut), "\n ")
 	if err != nil {
 		c.setState(false)
 		c.addError(err)
-		c.setMessage(string(version))
+		c.setMessage(version)
 		return
 	}
 
-	parsed, err := semver.Parse(string(version))
+	parsed, err := semver.Parse(version)
 	if err != nil {
 		c.setState(false)
 		c.addError(err)
@@ -94,8 +97,10 @@ func (c *pythonModuleVersion) Run() {
 		return
 	}
 
-	result, err := compareVersions(c.Relationship, expected, parsed)
+	result, err := compareVersions(c.Relationship, parsed, expected)
 	if err != nil {
+		// this should be unreachable, because the earlier
+		// validate will have caught it.
 		c.setState(false)
 		c.addError(err)
 		return

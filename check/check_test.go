@@ -39,6 +39,7 @@ func (s *CheckSuite) SetupSuite() {
 
 func (s *CheckSuite) SetupTest() {
 	s.require.NotNil(s.factory)
+	grip.Alertf("%T: %+v", s.factory(), s.factory())
 	s.check = s.factory().(greenbay.Checker)
 	s.require.NotNil(s.check)
 }

@@ -12,8 +12,6 @@ import (
 // this would be an init function but is simply called from the init()
 // in init.go to avoid ordering effects.
 func registerPackageChecks() {
-	var name string
-	var checkFunc packageChecker
 	packageCheckerFactoryFactory := func(name string, installed bool, checker packageChecker) func() amboy.Job {
 		return func() amboy.Job {
 			return &packageInstalled{
@@ -23,6 +21,8 @@ func registerPackageChecks() {
 			}
 		}
 	}
+
+	var name string
 
 	for pkg, checker := range packageCheckerRegistry {
 		name = fmt.Sprintf("%s-installed", pkg)

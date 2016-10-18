@@ -1,3 +1,17 @@
+/*
+Package check provides implementation of check functions or jobs that
+are used in system validation.
+
+Base
+
+The base job implements all components of the amboy.Job interface and
+all common components of the greenbay.Check interface, including error
+handling and job processing. All checks should, typically, compose a
+pointer to Base.
+
+For an example of a check that uses Base, see the test job in the
+"mock_check_for_test.go" file.
+*/
 package check
 
 import (

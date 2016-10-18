@@ -5,7 +5,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func compareVersions(rel string, expected, actual semver.Version) (bool, error) {
+func compareVersions(rel string, actual, expected semver.Version) (bool, error) {
 	switch rel {
 	case "gte", "":
 		return actual.GTE(expected), nil

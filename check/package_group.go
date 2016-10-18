@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
 )
 
@@ -22,7 +23,7 @@ func registerPackageGroupChecks() {
 	for pkg, checker := range packageCheckerRegistry {
 		for group, requirements := range groupRequirementRegistry {
 			name := fmt.Sprintf("%s-group-%s", pkg, group)
-			regisry.AddJobType(name, packageGroupFactoryFactory(name, requirements, checker))
+			registry.AddJobType(name, packageGroupFactoryFactory(name, requirements, checker))
 		}
 	}
 }

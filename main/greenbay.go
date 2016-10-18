@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strings"
 
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/greenbay/check"
@@ -35,8 +37,8 @@ func main() {
 // we build the app outside of main so that we can test the operation
 func buildApp() *cli.App {
 	app := cli.NewApp()
-	app.Name = "curator"
-	app.Usage = "a package repository generation tool."
+	app.Name = "greenbay"
+	app.Usage = "a system configuration integration test runner."
 	app.Version = "0.0.1-pre"
 
 	// Register sub-commands here.
@@ -94,18 +96,20 @@ func list() cli.Command {
 		Name:  "list",
 		Usage: "list all available checks",
 		Action: func(c *cli.Context) error {
-			var seen int
-			fmt.Println("Registered Greenbay Checks:")
+			var list []string
 			for name := range registry.JobTypeNames() {
-				seen++
-				fmt.Println("\t", name)
+				list = append(list, name)
 			}
 
-			if seeen == 0 {
+			if len(list) == 0 {
 				return errors.New("no jobs registered")
 			}
 
-			grip.Info("%d checks registered", seen)
+			sort.Strings(list)
+			fmt.Printf("Registered Greenbay Checks:\n\t%s\n",
+				strings.Join(list, "\n\t"))
+
+			grip.Infof("%d checks registered", len(list))
 			return nil
 		},
 	}
