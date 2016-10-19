@@ -153,7 +153,7 @@ func (s *CmdGroupSuite) TestWithNoneRequiredSucceed() {
 
 func (s *CmdGroupSuite) TestWithAllRequiredSucceedToFail() {
 	s.check.Requirements = GroupRequirements{Name: s.name, All: true}
-	for cmd, _ := range s.cmds {
+	for cmd := range s.cmds {
 		s.check.Commands = append(s.check.Commands,
 			makeShellJob(cmd, s.wd, true, s.env))
 	}

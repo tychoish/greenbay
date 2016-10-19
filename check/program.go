@@ -27,6 +27,7 @@ func registerProgramChecks() {
 
 	registrar(compilerInterfaceFactoryTable())
 	registrar(goCompilerIterfaceFactoryTable())
+	registrar(scriptCompilerInterfaceFactoryTable())
 }
 
 type programOutputCheck struct {

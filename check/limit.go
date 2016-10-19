@@ -3,6 +3,7 @@ package check
 import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
+	"github.com/pkg/errors"
 )
 
 func registerSystemLimitChecks() {
@@ -43,7 +44,7 @@ func (c *limitCheck) Run() {
 
 	if !result {
 		c.setState(false)
-		c.addError(err)
+		c.addError(errors.Errorf("limit in check %s is incorrect", c.ID()))
 		return
 	}
 }

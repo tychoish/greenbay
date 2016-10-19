@@ -16,7 +16,6 @@ most cases, specific check implementations inculde the check.Base
 type, which contains implementations of most methods (except for
 Run()) required by this interface.
 */
-
 package greenbay
 
 import (

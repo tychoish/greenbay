@@ -10,34 +10,63 @@ import (
 )
 
 func goCompilerIterfaceFactoryTable() map[string]compilerFactory {
+	factory := func(path string) compilerFactory {
+		return func() compiler {
+			return compileGolang{
+				bin: path,
+			}
+		}
+	}
+
 	return map[string]compilerFactory{
-		"compile-go-auto":            goCompilerFactory("go"),
-		"compile-opt-go-default":     goCompilerFactory("/opt/go/bin/go"),
-		"compile-toolchain-gccgo-v2": goCompilerFactory("/opt/mongodbtoolchain/v2/bin/go"),
+		"compile-go-auto":            goCompilerAuto,
+		"compile-opt-go-default":     factory("/opt/go/bin/go"),
+		"compile-toolchain-gccgo-v2": factory("/opt/mongodbtoolchain/v2/bin/go"),
+		"compile-usr-local-go":       factory("/usr/local/go"),
+		"compile-user-local-go":      factory("/usr/bin/go"),
 	}
 }
 
-func goCompilerFactory(path string) func() compiler {
-	return func() compiler {
-		return &compileGolang{
-			bin: path,
+func goCompilerAuto() compiler {
+	paths := []string{
+		"/opt/go/bin/go",
+		"/opt/mongodbtoolchain/v2/bin/go",
+		"/usr/bin/go",
+		"/usr/local/bin/go",
+	}
+	c := compileGolang{}
+
+	for _, path := range paths {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			c.bin = path
+			break
 		}
 	}
+
+	if c.bin == "" {
+		c.bin = "go"
+	}
+
+	return c
 }
 
 type compileGolang struct {
 	bin string
 }
 
-func (c *compileGolang) Validate() error {
-	if _, err := os.Stat(c.bin); !os.IsNotExist(err) {
+func (c compileGolang) Validate() error {
+	if c.bin == "" {
+		return errors.New("no go binary specified")
+	}
+
+	if _, err := os.Stat(c.bin); os.IsNotExist(err) {
 		return errors.Errorf("go binary '%s' does not exist", c.bin)
 	}
 
 	return nil
 }
 
-func (c *compileGolang) Compile(testBody string, _ ...string) error {
+func (c compileGolang) Compile(testBody string, _ ...string) error {
 	_, source, err := writeTestBody(testBody, "go")
 	if err != nil {
 		return errors.Wrap(err, "problem writing test to temporary file")
@@ -54,7 +83,7 @@ func (c *compileGolang) Compile(testBody string, _ ...string) error {
 	return nil
 }
 
-func (c *compileGolang) CompileAndRun(testBody string, _ ...string) (string, error) {
+func (c compileGolang) CompileAndRun(testBody string, _ ...string) (string, error) {
 	_, source, err := writeTestBody(testBody, "go")
 	if err != nil {
 		return "", errors.Wrap(err, "problem writing test to temporary file")

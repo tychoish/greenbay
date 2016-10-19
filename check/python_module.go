@@ -78,7 +78,6 @@ func (c *pythonModuleVersion) Run() {
 	}
 
 	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	fmt.Println(strings.Join(cmdArgs, " "), "-->", c.Relationship)
 	versionOut, err := cmd.Output()
 	version := strings.Trim(string(versionOut), "\n ")
 	if err != nil {

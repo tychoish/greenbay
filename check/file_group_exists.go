@@ -77,6 +77,6 @@ func (c *fileGroup) Run() {
 
 	if !result {
 		c.setMessage(msg)
-		c.addError(errors.New("group of files do not satisfy check requirements."))
+		c.addError(errors.New("group of files do not satisfy check requirements"))
 	}
 }

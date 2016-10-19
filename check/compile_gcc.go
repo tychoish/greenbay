@@ -12,12 +12,20 @@ import (
 )
 
 func compilerInterfaceFactoryTable() map[string]compilerFactory {
+	factory := func(path string) func() compiler {
+		return func() compiler {
+			return compileGCC{
+				bin: path,
+			}
+		}
+	}
+
 	return map[string]compilerFactory{
-		"compile-gcc-auto":     newCompileAnyGCC,
-		"compile-gcc-system":   newCompileSpecificGCC("gcc"),
-		"compile-toolchain-v2": newCompileSpecificGCC("/opt/mongodbtoolchain/v2/bin/gcc"),
-		"compile-toolchain-v1": newCompileSpecificGCC("/opt/mongodbtoolchain/v1/bin/gcc"),
-		"compile-toolchain-v0": newCompileSpecificGCC("/opt/mongodbtoolchain/bin/gcc"),
+		"compile-gcc-auto":     gccCompilerAuto,
+		"compile-gcc-system":   factory("gcc"),
+		"compile-toolchain-v2": factory("/opt/mongodbtoolchain/v2/bin/gcc"),
+		"compile-toolchain-v1": factory("/opt/mongodbtoolchain/v1/bin/gcc"),
+		"compile-toolchain-v0": factory("/opt/mongodbtoolchain/bin/gcc"),
 	}
 }
 
@@ -25,13 +33,15 @@ type compileGCC struct {
 	bin string
 }
 
-func newCompileAnyGCC() compiler {
-	c := &compileGCC{}
+func gccCompilerAuto() compiler {
+	c := compileGCC{}
 
 	paths := []string{
 		"/opt/mongodbtoolchain/v2/bin/gcc",
 		"/opt/mongodbtoolchain/v1/bin/gcc",
 		"/opt/mongodbtoolchain/bin/gcc",
+		"/usr/bin/gcc",
+		"/usr/local/bin/gcc",
 	}
 
 	for _, path := range paths {
@@ -48,30 +58,22 @@ func newCompileAnyGCC() compiler {
 	return c
 }
 
-func newCompileSpecificGCC(path string) compilerFactory {
-	return func() compiler {
-		return &compileGCC{
-			bin: path,
-		}
-	}
-}
-
-func (c *compileGCC) Validate() error {
+func (c compileGCC) Validate() error {
 	if c.bin == "" {
 		return errors.New("no compiler specified")
 	}
 
-	if _, err := os.Stat(c.bin); !os.IsNotExist(err) {
+	if _, err := os.Stat(c.bin); os.IsNotExist(err) {
 		return errors.Errorf("compiler binary '%s' does not exist", c.bin)
 	}
 
 	return nil
 }
 
-func (c *compileGCC) Compile(testBody string, cFlags ...string) error {
+func (c compileGCC) Compile(testBody string, cFlags ...string) error {
 	outputName, sourceName, err := writeTestBody(testBody, "c")
 	outputName += ".o"
-	defer grip.Warning(os.Remove(outputName))
+	defer grip.CatchWarning(os.Remove(outputName))
 
 	cmd := exec.Command(c.bin, "-Werror", "-o", outputName, "-c", sourceName)
 	grip.Infof("running build command: %s", strings.Join(cmd.Args, " "))
@@ -83,9 +85,9 @@ func (c *compileGCC) Compile(testBody string, cFlags ...string) error {
 	return nil
 }
 
-func (c *compileGCC) CompileAndRun(testBody string, cFlags ...string) (string, error) {
+func (c compileGCC) CompileAndRun(testBody string, cFlags ...string) (string, error) {
 	outputName, sourceName, err := writeTestBody(testBody, "c")
-	defer grip.Warning(os.Remove(outputName))
+	defer grip.CatchWarning(os.Remove(outputName))
 
 	argv := []string{"-Werror", "-o", outputName}
 	argv = append(argv, sourceName)

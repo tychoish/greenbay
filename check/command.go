@@ -79,12 +79,9 @@ func (c *shellOperation) Run() {
 			c.Command))
 	}
 
-	grip.Info(strings.Join(logMsg, ", "))
+	grip.Debug(strings.Join(logMsg, ", "))
 
 	if !c.getState() {
 		c.setMessage(string(out))
 	}
-
-	grip.Info(string(out))
-	return
 }

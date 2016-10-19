@@ -44,8 +44,6 @@ func (c *fileExistance) Run() {
 	stat, err := os.Stat(c.FileName)
 	fileExists = !os.IsNotExist(err)
 
-	fmt.Println(fmt.Sprintf("%+v, %+v", stat, err), c.FileName, fileExists, c.ShouldExist, fileExists == c.ShouldExist)
-
 	c.setState(fileExists == c.ShouldExist)
 	if fileExists != c.ShouldExist {
 		c.addError(errors.New("file existence check did not detect expected state"))
