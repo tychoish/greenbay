@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/amboy/rest"
 	"github.com/mongodb/greenbay/check"
 	"github.com/mongodb/greenbay/operations"
 	"github.com/pkg/errors"
@@ -45,6 +46,7 @@ func buildApp() *cli.App {
 	app.Commands = []cli.Command{
 		list(),
 		checks(),
+		service(),
 	}
 
 	// need to call a function in the check package so that the
@@ -177,6 +179,56 @@ func checks() cli.Command {
 			}
 
 			return errors.Wrap(app.Run(ctx), "problem running tests")
+		},
+	}
+}
+
+func service() cli.Command {
+	return cli.Command{
+		Name:  "service",
+		Usage: "run a amboy service with greenbay checks loaded.",
+		Flags: []cli.Flag{
+			cli.IntFlag{
+				Name:  "port",
+				Usage: "http port to run service on",
+				Value: 3000,
+			},
+			cli.IntFlag{
+				Name:    "cache",
+				Usage:   "number of jobs to store",
+				Default: 1000,
+			},
+			cli.IntFlag{
+				Name:  "jobs",
+				Usage: "specify the number of parallel tests to run.",
+				Value: 2,
+			},
+			cli.StringFlag{
+				Name: "logOutput, o",
+				Usage: fmt.Sprintln("specify the logging format, choices are:",
+					"[stdout, file, json-stdout, json-file, systemd, syslog]"),
+			},
+			cli.StringFlag{
+				Name:  "file, f",
+				Usage: "specify the file to write the log to, for file-based output methods",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			grip.CatchEmergencyFatal(operations.SetupLogging(c.String("logOutput"), c.String("file")))
+
+			ctx := context.Background()
+			info := rest.ServiceInfo{QueueSize: c.Int("cache"), NumWorkers: c.Int("jobs")}
+
+			s, err := operations.NewService(c.Int("port"))
+			grip.CatchEmergencyFatal(err)
+
+			grip.Info("starting greenbay workers")
+			grip.CatchEmergencyFatal(s.Open(ctx, info))
+			defer s.Close()
+
+			grip.Info("starting service on port %d", c.Int("port"))
+			grip.CatchEmergencyFatal(s.Run())
+			grip.Info("service shutting down")
 		},
 	}
 }
