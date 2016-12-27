@@ -18,7 +18,7 @@ func SetupLogging(format string, fileName string) error {
 	case "json-stdout":
 		sender = send.MakeJSONConsoleLogger()
 	case "json-file":
-		sender, err = send.MakeJSONFIleLogger(filename)
+		sender, err = send.MakeJSONFileLogger(fileName)
 	case "systemd":
 		sender = setupSystemdLogging()
 	case "syslog":
@@ -29,7 +29,7 @@ func SetupLogging(format string, fileName string) error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "log type %s is not configured", format)
+		return errors.Wrapf(err, "log type %s is not configured", format)
 	}
 
 	grip.SetSender(sender)
