@@ -62,7 +62,7 @@ func (c *GreenbayClient) Run(ctx context.Context) error {
 	catcher := grip.NewCatcher()
 	ids := []string{}
 
-	for check := range c.Conf.GetAllTests(tests, suites) {
+	for check := range c.Conf.GetAllTests(c.Tests, c.Suites) {
 		if check.Err != nil {
 			catcher.Add(check.Err)
 			continue
@@ -95,7 +95,7 @@ func (c *GreenbayClient) Run(ctx context.Context) error {
 
 	jobs := make(chan amboy.Job, len(ids))
 	for _, id := range ids {
-		j, err := c.client.FetchJobs(ctx, id)
+		j, err := c.client.FetchJob(ctx, id)
 		if err != nil {
 			catcher.Add(err)
 		}

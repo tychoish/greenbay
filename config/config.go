@@ -155,7 +155,7 @@ func (c *GreenbayTestConfig) TestsByName(names ...string) <-chan JobWithError {
 }
 
 // GetAllTests returns a channel that produces tests given lists of tests and suites.
-func (c *GreenbayTestConfig) GetAllTests(tests, suites []strin) <-chan JobWithError {
+func (c *GreenbayTestConfig) GetAllTests(tests, suites []string) <-chan JobWithError {
 	output := make(chan JobWithError)
 	go func() {
 		for check := range c.TestsByName(tests...) {
