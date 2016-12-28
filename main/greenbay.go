@@ -77,6 +77,11 @@ func loggingSetup(name, level string) {
 	grip.SetThreshold(level)
 }
 
+func getDefaultConfigPath() string {
+	cwd, _ := os.Getwd()
+	return filepath.Join(cwd, "greenbay.yaml")
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Define SubCommands
@@ -109,8 +114,7 @@ func list() cli.Command {
 
 func checks() cli.Command {
 	defaultNumJobs := runtime.NumCPU()
-	cwd, _ := os.Getwd()
-	configPath := filepath.Join(cwd, "greenbay.yaml")
+	configPath := getDefaultConfigPath()
 
 	return cli.Command{
 		Name:  "run",
@@ -194,9 +198,9 @@ func service() cli.Command {
 				Value: 3000,
 			},
 			cli.IntFlag{
-				Name:    "cache",
-				Usage:   "number of jobs to store",
-				Default: 1000,
+				Name:  "cache",
+				Usage: "number of jobs to store",
+				Value: 1000,
 			},
 			cli.IntFlag{
 				Name:  "jobs",
@@ -226,9 +230,53 @@ func service() cli.Command {
 			grip.CatchEmergencyFatal(s.Open(ctx, info))
 			defer s.Close()
 
-			grip.Info("starting service on port %d", c.Int("port"))
-			grip.CatchEmergencyFatal(s.Run())
+			grip.Infof("starting service on port %d", c.Int("port"))
+			s.Run()
 			grip.Info("service shutting down")
+
+			return nil
 		},
 	}
+}
+
+func client() cli.Command {
+	configPath := getDefaultConfigPath()
+
+	return cli.Command{
+		Name:  "client",
+		Usage: "run a check or checks on a remote greenbay service",
+		Flags: []cli.Flag{
+			cli.StringSliceFlag{
+				Name:  "test",
+				Usage: "specify a check, by name. may specify multiple times",
+			},
+			cli.StringSliceFlag{
+				Name:  "suite",
+				Usage: "specify a suite or suites, by name. if not specified, runs the 'all' suite",
+			},
+			cli.StringFlag{
+				Name: "conf",
+				Usage: fmt.Sprintln("path to config file. '.json', '.yaml', and '.yml' extensions ",
+					"supported.", "Default path:", configPath),
+				Value: configPath,
+			},
+		},
+		Action: func(c *cli.Context) error {
+			// Note: in the future in may make sense to
+			// use this context to timeout the work of the
+			// underlying processes.
+
+			// ctx := context.Background()
+			suites := c.StringSlice("suite")
+			tests := c.StringSlice("test")
+
+			if len(suites) == 0 && len(tests) == 0 {
+				suites = append(suites, "all")
+			}
+
+			grip.Info("client not implemented")
+			return nil
+		},
+	}
+
 }

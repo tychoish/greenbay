@@ -1,4 +1,5 @@
 // +build linux
+
 package operations
 
 import "github.com/tychoish/grip/send"

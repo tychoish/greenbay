@@ -97,7 +97,7 @@ func (a *GreenbayApp) Run(ctx context.Context) error {
 
 	stats := q.Stats()
 	grip.Noticef("registered %d jobs, running checks now", stats.Total)
-	q.Wait()
+	amboy.WaitCtxInterval(ctx, q, 10*time.Millisecond)
 
 	grip.Noticef("checks complete in [num=%d, runtime=%s] ", stats.Total, time.Since(start))
 	if err := a.Output.ProduceResults(q); err != nil {

@@ -16,7 +16,7 @@ func NewService(port int) (*GreenbayService, error) {
 		service: rest.NewService(),
 	}
 
-	if err := s.service.SetPort(int); err != nil {
+	if err := s.service.App().SetPort(port); err != nil {
 		return nil, errors.Wrap(err, "problem constructing greenbay service")
 	}
 
@@ -24,11 +24,11 @@ func NewService(port int) (*GreenbayService, error) {
 }
 
 func (s *GreenbayService) Open(ctx context.Context, info rest.ServiceInfo) error {
-	// TODO: add routes to the app here.
-	app := service.App()
-	app.AddRoute("/check/suite/{name}").Version(1).Post().Handler()
+	// // TODO: add routes to the app here.
+	// app := s.service.App()
+	// app.AddRoute("/check/suite/{name}").Version(1).Post().Handler()
 
-	if err := s.service.Open(ctx, info); err != nil {
+	if err := s.service.OpenInfo(ctx, info); err != nil {
 		return errors.Wrap(err, "problem opening queue")
 	}
 
@@ -39,6 +39,6 @@ func (s *GreenbayService) Close() {
 	s.service.Close()
 }
 
-func (s *GreenbayService) Run() error {
-	return s.service.Run()
+func (s *GreenbayService) Run() {
+	s.service.Run()
 }

@@ -21,13 +21,10 @@ type GripOutput struct {
 // Results() method) of an amboy.Queue instance. All jobs processed by
 // that queue must also implement the greenbay.Checker
 // interface. Returns an error if there are any invalid jobs.
-func (r *GripOutput) Populate(queue amboy.Queue) error {
-	if queue == nil {
-		return errors.New("cannot populate results with a nil queue")
-	}
-
+func (r *GripOutput) Populate(jobs <-chan amboy.Job) error {
 	catcher := grip.NewCatcher()
-	for wu := range jobsToCheck(queue.Results()) {
+
+	for wu := range jobsToCheck(jobs) {
 		if wu.err != nil {
 			catcher.Add(wu.err)
 			continue
