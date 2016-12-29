@@ -240,5 +240,28 @@ func (s *ConfigSuite) TestBySuiteWithInconsistentData() {
 		s.Error(t.Err)
 		s.Nil(t.Job)
 	}
+}
 
+func (s *ConfigSuite) TestCombinedCheckGenerator() {
+	conf, err := ReadConfig(s.confFile)
+
+	s.NoError(err)
+	s.NotNil(conf)
+	conf.tests = make(map[string]amboy.Job)
+
+	conf.RawTests[0].Suites = []string{"foo"}
+
+	var firstTestName string
+	var tests int
+	for range conf.GetAllTests([]string{}, []string{"foo"}) {
+		tests++
+	}
+	s.Equal(1, tests)
+
+	tests = 0
+	for range conf.GetAllTests([]string{firstTestName}, []string{"one"}) {
+		tests++
+	}
+
+	s.Equal(tests, s.numTestsInFile+1)
 }

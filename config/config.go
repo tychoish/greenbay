@@ -165,6 +165,7 @@ func (c *GreenbayTestConfig) GetAllTests(tests, suites []string) <-chan JobWithE
 		for check := range c.TestsForSuites(suites...) {
 			output <- check
 		}
+		close(output)
 	}()
 
 	return output

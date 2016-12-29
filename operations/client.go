@@ -90,10 +90,23 @@ func (c *GreenbayClient) Run(ctx context.Context) error {
 	// However, the assumption is that 20 seconds will be enough
 	// given that these jobs should complete faster than that.
 	if !c.client.WaitAll(ctx) {
-		return errors.New("timed out waiting for jobs to complete")
+		return errors.Errorf("timed out waiting for %d jobs to complete", len(ids))
 	}
 
+	jobs, errs := c.getJobFromIds(ctx, ids)
+
+	catcher.Add(c.Output.CollectResults(jobs))
+	catcher.Add(<-errs)
+
+	grip.Noticef("checks complete in [num=%d, runtime=%s] ", len(ids), time.Since(start))
+	return catcher.Resolve()
+}
+
+func (c *GreenbayClient) getJobFromIds(ctx context.Context, ids []string) (<-chan amboy.Job, <-chan error) {
+	errs := make(chan error)
 	jobs := make(chan amboy.Job, len(ids))
+	catcher := grip.NewCatcher()
+
 	for _, id := range ids {
 		j, err := c.client.FetchJob(ctx, id)
 		if err != nil {
@@ -103,9 +116,8 @@ func (c *GreenbayClient) Run(ctx context.Context) error {
 	}
 
 	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "problem collecting and submitting jobs")
+		errs <- catcher.Resolve()
 	}
-
-	grip.Noticef("checks complete in [num=%d, runtime=%s] ", len(ids), time.Since(start))
-	return c.Output.CollectResults(jobs)
+	close(errs)
+	return jobs, errs
 }

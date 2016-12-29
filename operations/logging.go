@@ -6,6 +6,10 @@ import (
 	"github.com/tychoish/grip/send"
 )
 
+// SetupLogging is a helper to configure the global grip logging
+// instance, and is used in the main package to configure logging for
+// the Greebay Service. Reconfigures the logging backend for the
+// process' default "grip" logging instance.
 func SetupLogging(format string, fileName string) error {
 	var sender send.Sender
 	var err error
