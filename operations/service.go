@@ -9,7 +9,8 @@ import (
 // GreenbayService holds the configuration and operations for running
 // a Greenbay service.
 type GreenbayService struct {
-	service *rest.Service
+	DisableStats bool
+	service      *rest.Service
 }
 
 // NewService constructs a GreenbayService, but does not start the
@@ -23,11 +24,13 @@ func NewService(host string, port int) (*GreenbayService, error) {
 		service: rest.NewService(),
 	}
 
-	if err := s.service.App().SetPort(port); err != nil {
+	app := s.service.App()
+
+	if err := app.SetPort(port); err != nil {
 		return nil, errors.Wrap(err, "problem constructing greenbay service")
 	}
 
-	if err := s.service.App().SetHost(host); err != nil {
+	if err := app.SetHost(host); err != nil {
 		return nil, errors.Wrap(err, "problem constructing greenbay service")
 	}
 
@@ -38,9 +41,13 @@ func NewService(host string, port int) (*GreenbayService, error) {
 // amboy.rest package to set the queue size, number of workers, and
 // timeout when restarting the service.
 func (s *GreenbayService) Open(ctx context.Context, info rest.ServiceInfo) error {
-	// // TODO: add routes to the app here.
-	// app := s.service.App()
-	// app.AddRoute("/check/suite/{name}").Version(1).Post().Handler()
+	app := s.service.App()
+
+	if s.DisableStats {
+		app.AddRoute("/stats/system_info").Version(1).Get().Handler(s.sysInfoHandler)
+		app.AddRoute("/stats/process_info/{pid}").Version(1).Get().Handler(s.processInfoHandler)
+		app.AddRoute("/stats/process_info").Version(1).Get().Handler(s.processInfoHandler)
+	}
 
 	if err := s.service.OpenInfo(ctx, info); err != nil {
 		return errors.Wrap(err, "problem opening queue")
